@@ -52,6 +52,9 @@ struct RecoveryHandoffView: View {
           .font(InstallerTheme.detail).foregroundStyle(InstallerTheme.caution)
         Text("Have your macOS owner’s password ready. You’ll create your recovery account there.")
           .font(InstallerTheme.detail).foregroundStyle(InstallerTheme.secondaryText)
+        if let note = guide.keyboardNote {
+          Text(note).font(InstallerTheme.detail).foregroundStyle(InstallerTheme.secondaryText)
+        }
       }.font(InstallerTheme.body)
     } actions: {
       HStack(spacing: 12) {

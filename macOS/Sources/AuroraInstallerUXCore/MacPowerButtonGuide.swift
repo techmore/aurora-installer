@@ -46,5 +46,15 @@
       case .notebook, .generic: "Hold the power button until startup options appear."
       }
     }
+
+    /// Finish Installation asks for the macOS owner's password in Recovery.
+    /// A desktop Mac has no built-in keyboard, so say so before it shuts down.
+    public var keyboardNote: String? {
+      switch self {
+      case .desktopRear, .desktopUnderside:
+        "This Mac has no built-in keyboard. Connect a wired USB keyboard before you shut down: you’ll type your macOS owner’s password in Recovery."
+      case .notebook, .generic: nil
+      }
+    }
   }
 #endif

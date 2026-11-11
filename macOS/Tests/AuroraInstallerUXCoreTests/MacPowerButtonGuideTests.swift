@@ -35,6 +35,13 @@
       }
     }
 
+    func testOnlyDesktopsAskForAKeyboard() {
+      XCTAssertNotNil(MacPowerButtonGuide.desktopRear.keyboardNote)
+      XCTAssertNotNil(MacPowerButtonGuide.desktopUnderside.keyboardNote)
+      XCTAssertNil(MacPowerButtonGuide.notebook.keyboardNote)
+      XCTAssertNil(MacPowerButtonGuide.generic.keyboardNote)
+    }
+
     func testUnknownAndOtherEnclosuresUseGenericGuidance() {
       for id in ["unknown", "apple,j456", "apple,j180d"] {
         let guide = MacPowerButtonGuide(deviceIdentifier: id, modelIdentifier: "unknown")
