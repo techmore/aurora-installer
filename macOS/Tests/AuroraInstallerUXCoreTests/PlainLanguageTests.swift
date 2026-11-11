@@ -807,6 +807,17 @@
           .contains(PlainLanguage.encryptionOptOutRecorded))
     }
 
+    func testNetworkFailureNamesTheHostItCouldNotReach() {
+      let url = URL(string: "https://updates.cdn-apple.com/fullrestores/Restore.ipsw")!
+      let failure = PlainLanguage.failure(
+        for: URLError(.cannotConnectToHost, userInfo: [NSURLErrorFailingURLErrorKey: url]))
+      XCTAssertEqual(failure.headline, "The network request didn’t finish")
+      XCTAssertTrue(failure.plainDetail.contains("updates.cdn-apple.com"))
+
+      let anonymous = PlainLanguage.failure(for: URLError(.notConnectedToInternet))
+      XCTAssertEqual(anonymous.plainDetail, "Check your internet connection before continuing.")
+    }
+
     func testCopyAuditOmitsAsahiExceptTheInstallerEngine() throws {
       let tests = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

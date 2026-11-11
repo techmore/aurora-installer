@@ -1003,10 +1003,16 @@
       if let shortfall = error as? MacOSFreeSpaceShortfall {
         return macOSSpaceShortfall(shortfall, technicalDetail: technical)
       }
-      if error is URLError {
+      if let urlError = error as? URLError {
+        // Name the server: a connection that works for one host (GitHub) can
+        // still be blocked for another (Apple's firmware CDN).
+        let plain =
+          urlError.failingURL?.host.map {
+            "The request to \($0) didn’t finish. Check your internet connection, and that nothing on this Mac or network blocks \($0)."
+          } ?? "Check your internet connection before continuing."
         return FailureDisplay(
           headline: "The network request didn’t finish",
-          plainDetail: "Check your internet connection before continuing.",
+          plainDetail: plain,
           technicalDetail: technical, remedy: "Check your internet connection, then try again.")
       }
 
