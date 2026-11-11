@@ -21,6 +21,20 @@
       }
     }
 
+    // The 2024 mini is in the "Mac mini" family, so a known device identifier
+    // must not fall through to the rear-button artwork of the older minis.
+    func testKnown2024MiniUsesUndersideButton() {
+      let cases = [
+        ("apple,j773g", "Mac16,10"), ("apple,j773s", "Mac16,11"),
+        ("apple,j773g", ""), ("apple,j773s", ""),
+      ]
+      for (id, model) in cases {
+        let guide = MacPowerButtonGuide(deviceIdentifier: id, modelIdentifier: model)
+        XCTAssertEqual(guide, .desktopUnderside, "\(id) \(model)")
+        XCTAssertNil(guide.assetName)
+      }
+    }
+
     func testUnknownAndOtherEnclosuresUseGenericGuidance() {
       for id in ["unknown", "apple,j456", "apple,j180d"] {
         let guide = MacPowerButtonGuide(deviceIdentifier: id, modelIdentifier: "unknown")

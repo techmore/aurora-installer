@@ -2,14 +2,23 @@
   public enum MacPowerButtonGuide: String, Equatable, Sendable {
     case notebook, desktopRear, desktopUnderside, generic
 
+    // Apple's 2024 mini (M4, M4 Pro) moved its power button to the underside.
+    // This is presentation metadata, not an installation support gate.
+    private static let undersideDevices: Set<String> = ["apple,j773g", "apple,j773s"]
+    private static let undersideModels: Set<String> = ["Mac16,10", "Mac16,11"]
+
     public init(deviceIdentifier: String, modelIdentifier: String) {
+      // Checked before the family: the 2024 mini is a "Mac mini" too.
+      if Self.undersideModels.contains(modelIdentifier)
+        || Self.undersideDevices.contains(deviceIdentifier.lowercased())
+      {
+        self = .desktopUnderside
+        return
+      }
       switch MacModelNames.entry(for: deviceIdentifier)?.family {
       case "MacBook Air", "MacBook Pro", "MacBook Neo": self = .notebook
       case "Mac mini", "Mac Studio": self = .desktopRear
-      default:
-        // Apple's 2024 mini moved its power button to the underside.
-        // This is presentation metadata, not an installation support gate.
-        self = ["Mac16,10", "Mac16,11"].contains(modelIdentifier) ? .desktopUnderside : .generic
+      default: self = .generic
       }
     }
 
