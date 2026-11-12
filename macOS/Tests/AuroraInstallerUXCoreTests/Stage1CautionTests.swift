@@ -18,6 +18,10 @@
         XCTAssertTrue(reason?.contains("touchscreen") ?? false, board)
         XCTAssertFalse(reason?.contains("\u{2014}") ?? true, board)
       }
+      let mini = Stage1Caution.reason(for: "apple,j773g")
+      XCTAssertTrue(mini?.contains("Mac mini with M4") ?? false)
+      XCTAssertTrue(mini?.contains("did not start Linux") ?? false)
+      XCTAssertFalse(mini?.contains("\u{2014}") ?? true)
       let others = [
         "j274", "j413", "j616s", "j713", "j700", "j314s", "j316s", "j314c", "j316c", "j375c",
         "j375d",
