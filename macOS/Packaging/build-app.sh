@@ -34,12 +34,15 @@ export CARGO_BUILD_JOBS="$build_jobs"
 # Local payload support is compiled only in an explicitly requested debug test
 # build. Release configuration always compiles it out.
 build_configuration=release
-swift_test_arguments=()
+swift_build_arguments=(--configuration "$build_configuration")
 if [[ ${AURORA_LOCAL_PAYLOAD_TEST_BUILD:-0} == "1" ]]; then
   [[ ${AURORA_DEVELOPER_BUILD:-0} == "1" ]] \
     || fail "local payload test builds require a sealed developer build"
   build_configuration=debug
-  swift_test_arguments=(-Xswiftc -O -Xswiftc -gnone)
+  swift_build_arguments=(
+    --configuration "$build_configuration"
+    -Xswiftc -O -Xswiftc -gnone
+  )
 fi
 
 marketing_version="${AURORA_APP_VERSION:-0.1.0-alpha.20.m4minipatches}"
@@ -207,8 +210,7 @@ swift_tool="$(xcrun --find swift)"
 (
   cd "$package_directory"
   "$swift_tool" build \
-    --configuration "$build_configuration" \
-    "${swift_test_arguments[@]}" \
+    "${swift_build_arguments[@]}" \
     --jobs "$build_jobs"
 )
 binary_directory="$({
@@ -243,8 +245,7 @@ fi
 (
   cd "$package_directory"
   "$swift_tool" build \
-    --configuration "$build_configuration" \
-    "${swift_test_arguments[@]}" \
+    "${swift_build_arguments[@]}" \
     --jobs "$build_jobs" \
     --product AuroraAppleInstallerHelper \
     "${helper_link_arguments[@]}"
