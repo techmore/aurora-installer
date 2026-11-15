@@ -108,6 +108,34 @@ sealed_catalog_signature="$release_directory/catalog.json.sig"
 (( $(stat -f %z "$trust_root") == 32 )) \
   || fail "trust-root.ed25519.pub must contain exactly 32 bytes"
 
+# The Mac16,10 test release may only seal a payload that passed
+# check-j773g-payload.py: patched Stage 2 as the active m1n1/boot-ctxr.bin, one
+# kernel release across kernel, initrd and closure, and the written root UUID.
+if [[ $release_directory == "$package_directory/M4MiniPatches/Release" ]]; then
+  python3 - "$release_directory" "$package_directory/M4MiniPatches/ReleaseAssets/CATALOG-RECEIPT.json" <<'PYCODE' \
+    || fail "the M4MiniPatches catalog does not seal a gated payload"
+import hashlib, json, sys
+from pathlib import Path
+release, receipt_path = Path(sys.argv[1]), Path(sys.argv[2])
+receipt = json.loads(receipt_path.read_text())
+catalog = (release / "catalog.json").read_bytes()
+gate = receipt.get("payloadGate") or {}
+checks = ("stage2-active", "stage2-standard", "kernel-release", "closure-identity",
+          "initrd-modprobe", "root-identity")
+stage2 = "33ce5198c58766fb87e18f817a8f1f55d2141b2fcf619c8bf5c157470205a3c4"
+models = json.loads(catalog)["models"]
+ok = (
+    receipt.get("catalogSha256") == hashlib.sha256(catalog).hexdigest()
+    and all(gate.get(name) == "PASS" for name in checks)
+    and receipt.get("stage2Sha256") == stage2
+    and receipt.get("stage2EspPath") == "m1n1/boot-ctxr.bin"
+    and len(models) == 1
+    and models[0]["payloadDigest"] == "sha256:" + receipt.get("payloadSha256", "")
+)
+sys.exit(0 if ok else 1)
+PYCODE
+fi
+
 [[ ${AURORA_PRIVATE_PLAIN_TEST:-0} != "1" || ${AURORA_PRIVATE_LIMINE_TEST:-0} != "1" ]] \
   || fail "private plain and Limine profiles are mutually exclusive"
 [[ ${AURORA_DEVELOPER_BUILD:-0} != "1" \
