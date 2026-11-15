@@ -295,6 +295,7 @@ done
 /usr/bin/ditto "$package_directory/Resources/BrandSources" "$resources/BrandSources"
 install -m 0444 "$package_directory/Design/Assets/MacBookPowerButton.png" "$resources/MacBookPowerButton.png"
 install -m 0444 "$package_directory/Design/Assets/MacDesktopPowerButton.png" "$resources/MacDesktopPowerButton.png"
+install -m 0444 "$package_directory/Design/Assets/M4MiniPowerButton.png" "$resources/M4MiniPowerButton.png"
 mkdir -p "$resources/RecoveryTemplate"
 /usr/bin/ditto "$recovery_template" "$resources/RecoveryTemplate/Aurora Installer.app"
 strip_installed_swift "$resources/RecoveryTemplate/Aurora Installer.app/Contents/MacOS/OmarchyRecovery"
