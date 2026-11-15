@@ -346,6 +346,33 @@ def grub_entries(cfg: str) -> list[dict]:
     return [e for e in entries if e["linux"]]
 
 
+def grub_drives(lines: list[str]) -> dict[str, tuple[str, str]]:
+    """search --set=VAR (default root) --fs-uuid|--label X  ->  {VAR: (kind, X)}."""
+    drives = {}
+    for line in lines:
+        words = line.split()
+        var = "root"
+        kind = None
+        for w in words[1:]:
+            if w.startswith("--set="):
+                var = w.split("=", 1)[1]
+            elif w in ("--fs-uuid", "-u"):
+                kind = "uuid"
+            elif w in ("--label", "-l"):
+                kind = "label"
+        if kind:
+            value = words[-1]
+            drives[var] = (kind, value.lower() if kind == "uuid" else value)
+    return drives
+
+
+def split_grub_path(path: str) -> tuple[str | None, str]:
+    """'($drive1)//kernels/x' -> ('drive1', '/kernels/x'); '/x' -> (None, '/x')."""
+    m = re.match(r"^\(\$?([^)]+)\)(.*)$", path)
+    drive, rest = (m.group(1), m.group(2)) if m else (None, path)
+    return drive, "/" + re.sub(r"/+", "/", rest).lstrip("/")
+
+
 def kernel_release(image: bytes) -> str:
     if image[:2] == b"\x1f\x8b":
         image = gzip.decompress(image)
@@ -443,10 +470,27 @@ def main() -> int:
             entries = grub_entries(grub_cfg)
             if not entries:
                 raise Failure("GRUB configuration has no Linux entry")
+            facts["grub_cfg"] = grub_cfg[-4000:]
+            global_search = [l.strip() for l in grub_cfg.splitlines() if l.strip().startswith("search ")]
+
+            def grub_read(path: str, drives: dict) -> tuple[bytes, str]:
+                drive, rel = split_grub_path(path)
+                kind, value = drives.get(drive or "root", ("uuid", images["boot.img"]["uuid"]))
+                target = (by_uuid.get(value) if kind == "uuid" else by_label.get(value))
+                if target == "boot.img":
+                    return boot_fs.read(rel), "boot.img"
+                if target == "root.img":
+                    local, _ = root_reader.locate(rel, [""] + subvol_prefixes)
+                    return local.read_bytes(), "root.img"
+                raise Failure(f"GRUB path {path} names drive {drive or 'root'}={value}, not a written filesystem")
 
             refs: list[dict] = []  # every filesystem reference we must resolve
 
             def note_ref(where: str, kind: str, value: str, role: str | None = None) -> None:
+                # udev rules and shell helpers carry templates ($env{...}, $label);
+                # only literal identifiers are references.
+                if any(c in value for c in "$%{}*") or value in ("by-uuid", "by-label"):
+                    return
                 refs.append({"where": where, "kind": kind, "value": value, "role": role})
 
             for m in re.finditer(rf"search\s[^\n]*--fs-uuid[^\n]*?\s({UUID_RE})", grub_cfg):
@@ -461,7 +505,8 @@ def main() -> int:
             for idx, entry in enumerate(entries):
                 kpath, *params = entry["linux"]
                 ipaths = entry["initrd"] or []
-                kernel = boot_fs.read(kpath)
+                drives = grub_drives(global_search + entry["search"])
+                kernel, kernel_fs = grub_read(kpath, drives)
                 krel = kernel_release(kernel)
                 releases[f"grub[{idx}].kernel"] = krel
                 if args.kernel_sha256 and sha256_bytes(kernel) != args.kernel_sha256.lower():
@@ -473,10 +518,13 @@ def main() -> int:
                         ident = spec_identity(p[5:])
                         if ident:
                             note_ref(f"grub[{idx}] root=", ident[0], ident[1], "root.img")
-                if len(ipaths) != 1:
-                    raise Failure(f"GRUB entry {idx} must load exactly one initrd, has {ipaths}")
-                initrd = boot_fs.read(ipaths[0])
-                ent = initrd_entries(initrd)
+                if not ipaths:
+                    raise Failure(f"GRUB entry {idx} loads no initrd")
+                initrd_parts = [grub_read(ip, drives)[0] for ip in ipaths]
+                initrd = initrd_parts[0]
+                ent = {}
+                for part in initrd_parts:  # GRUB concatenates them in order
+                    ent.update(initrd_entries(part))
                 trees = module_trees(ent)
                 for rel in trees:
                     releases[f"grub[{idx}].initrd:/lib/modules/{rel}"] = rel
@@ -490,7 +538,8 @@ def main() -> int:
                             if m and re.search(r"(^|/)modprobe\s", m.group(2)):
                                 for mod in [a for a in m.group(2).split()[1:] if not a.startswith("-")]:
                                     if mod.replace("-", "_") not in avail:
-                                        fatal_modprobe.append({"entry": idx, "unit": name, "module": mod})
+                                        fatal_modprobe.append({"entry": idx, "unit": name, "module": mod,
+                                                               "line": line.strip()[:300]})
                     if name.endswith("fstab") or "/etc/fstab" in name:
                         for mnt, spec in fstab_mounts(text).items():
                             ident = spec_identity(spec)
@@ -513,6 +562,14 @@ def main() -> int:
                 initrd_info.append({"entry": idx, "initrd": ipaths[0], "sha256": sha256_bytes(initrd),
                                     "module_releases": sorted(trees),
                                     "vendor_firmware_unit_present": bool(fw),
+                                    "module_tree_evidence": {
+                                        rel: {
+                                            "dir": tree,
+                                            "has_modules_builtin": resolve_in(ent, f"{tree}/modules.builtin") in ent,
+                                            "ko_files": sum(1 for n in ent if n.startswith(tree + "/")
+                                                            and re.search(r"\.ko(\.(xz|gz|zst))?$", n)),
+                                            "known_module_names": len(module_names(ent, tree)),
+                                        } for rel, tree in trees.items()},
                                     "initrd_root_unit_present": bool(root_units),
                                     "initrd_root_unit_timeout": root_timeout})
 
@@ -540,12 +597,25 @@ def main() -> int:
                 etc_link, _ = root_reader.locate(f"{system}/etc", [prefix])
                 etc = os.readlink(etc_link) if etc_link.is_symlink() else f"{system}/etc"
                 fstab_link, _ = root_reader.locate(f"{etc}/fstab", [prefix])
+                chain = [f"{etc}/fstab"]
                 hops = 0
                 while fstab_link.is_symlink() and hops < 8:
                     t = os.readlink(fstab_link)
+                    chain.append(t)
                     fstab_link, _ = root_reader.locate(t if t.startswith("/") else f"{etc}/{t}", [prefix])
                     hops += 1
-                for mnt, spec in fstab_mounts(fstab_link.read_text()).items():
+                fstab_text = fstab_link.read_text()
+                facts.setdefault("closure_fstab", {})[f"entry{idx}"] = {
+                    "chain": chain, "bytes": len(fstab_text), "text": fstab_text[-2000:]}
+                if not fstab_mounts(fstab_text):
+                    problems.append(f"closure fstab {' -> '.join(chain)} is empty or unreadable "
+                                    f"({len(fstab_text)} bytes restored)")
+                for mnt, spec in fstab_mounts(fstab_text).items():
+                    if mnt == "/" and spec.startswith("/dev/mapper/"):
+                        # Reported, not judged: the stock first-boot conversion
+                        # (aurora-initrd-root.service) encrypts root in place.
+                        facts.setdefault("closure_root_device_mapper", []).append(
+                            {"entry": idx, "spec": spec})
                     ident = spec_identity(spec)
                     if ident:
                         role = {"/": "root.img", "/boot": "boot.img"}.get(mnt)
