@@ -20,6 +20,35 @@ PAYLOAD = "nixos-kde-build-43451965403.zip"
 METADATA = "installer-data-nixos-kde.json"
 METADATA_SHA256 = "db285f896eadce0a010beb17fb0da5bac5f5c293b8a80e497fe8ff1e7107bb3f"
 METADATA_BYTES = 16_714
+# Stage 2 B: Aura #113 -> #199 -> #258 -> #244-v2c, kernel A's J773g DTB and
+# Alpha 20's adopting U-Boot. Stage 1 on M4 loads it as ESP m1n1/boot-ctxr.bin.
+STAGE2_SHA256 = "33ce5198c58766fb87e18f817a8f1f55d2141b2fcf619c8bf5c157470205a3c4"
+GATE_CHECKS = (
+    "stage2-active", "stage2-standard", "kernel-release", "closure-identity",
+    "initrd-modprobe", "root-identity",
+)
+
+
+def require_gate(receipt_path: Path, payload_sha256: str) -> dict:
+    """Refuse to sign unless check-j773g-payload.py passed on these exact bytes."""
+    receipt = json.loads(receipt_path.read_text())
+    facts = receipt.get("facts", {})
+    checks = receipt.get("checks", {})
+    active = checks.get("stage2-active", {}).get("detail", {})
+    if (
+        receipt.get("tool") != "check-j773g-payload.py"
+        or receipt.get("verdict") != "PASS"
+        or facts.get("payload_sha256") != payload_sha256
+        or any(checks.get(name, {}).get("result") != "PASS" for name in GATE_CHECKS)
+        or not isinstance(active, dict)
+        or active.get("sha256") != STAGE2_SHA256
+        or active.get("esp_path") != "m1n1/boot-ctxr.bin"
+    ):
+        raise SystemExit(
+            "payload gate receipt is missing, failed, or names other bytes; run "
+            "check-j773g-payload.py on this payload with the patched Stage 2 first"
+        )
+    return receipt
 
 
 def digest(data: bytes) -> str:
@@ -75,6 +104,7 @@ def main() -> None:
     parser.add_argument("--private-key", type=Path, required=True)
     parser.add_argument("--metadata", type=Path, required=True)
     parser.add_argument("--payload", type=Path, required=True)
+    parser.add_argument("--gate-receipt", type=Path, required=True)
     parser.add_argument(
         "--identity",
         type=Path,
@@ -102,6 +132,7 @@ def main() -> None:
         raise SystemExit(f"payload must be a regular file named {PAYLOAD}")
     payload_sha256 = file_digest(args.payload)
     payload_bytes = args.payload.stat().st_size
+    gate = require_gate(args.gate_receipt, payload_sha256)
     part_paths = sorted(args.payload.parent.glob(f"{PAYLOAD}.part[0-9][0-9]"))
     expected_names = [f"{PAYLOAD}.part{index:02d}" for index in range(len(part_paths))]
     if len(part_paths) < 2 or [path.name for path in part_paths] != expected_names:
@@ -219,6 +250,10 @@ def main() -> None:
             "payloadBytes": payload_bytes,
             "payloadParts": len(parts),
             "metadataSha256": METADATA_SHA256,
+            "stage2Sha256": STAGE2_SHA256,
+            "stage2EspPath": "m1n1/boot-ctxr.bin",
+            "payloadGateSha256": file_digest(args.gate_receipt),
+            "payloadGate": {name: gate["checks"][name]["result"] for name in GATE_CHECKS},
             "sourceCatalog": official_envelope,
         },
     )

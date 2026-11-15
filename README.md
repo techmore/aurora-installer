@@ -2,7 +2,7 @@
 
 A native macOS app for installing Aurora Linux on Apple Silicon Macs.
 
-> **Unofficial Mac16,10 test build:** the `m4minipatches/alpha20-r2` branch is not an Aurora project release and is not affiliated with or endorsed by Aurora Silicon. Version `0.1.0-alpha.20.m4minipatches` is an ad-hoc-signed, unnotarized developer build for `apple,j773g` (Mac mini M4) and requires independent review before installation. Its single NixOS KDE payload carries the complete experimental Stage 2, kernel/modules/initrd, Mesa and NixOS chain. The rebuilt payload has not completed a clean install or lit HDMI behind Alpha 20 Stage 1 b13.1.
+> **Unofficial Mac16,10 test build:** the `m4minipatches/alpha20-r2` branch is not an Aurora project release and is not affiliated with or endorsed by Aurora Silicon. Version `0.1.0-alpha.20.m4minipatches` is an ad-hoc-signed, unnotarized developer build for `apple,j773g` (Mac mini M4) and requires independent review before installation. Its single NixOS KDE payload carries the complete experimental Stage 2, kernel/modules/initrd, Mesa and NixOS chain. It is not proven on hardware: on the J773g the patched Stage 2 and kernel reach Linux, but the real root mount, the desktop and HDMI have not been observed, and no clean install of this payload has booted.
 
 Choose **Fedora Aurora Remix**, **Aurora ALARM** or **Aurora NixOS**, with **KDE Plasma**, **GNOME** or a **minimal shell** system.
 
