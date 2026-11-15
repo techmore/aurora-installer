@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Original artwork drawn for Aurora Installer from geometric primitives and the public 127 mm footprint; no photograph or third-party image is used. M4MiniPowerButton.png is rendered from this file with: magick -background none -density 192 M4MiniPowerButton.svg -define png:exclude-chunks=date,time,tEXt,zTXt,iTXt M4MiniPowerButton.png -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" role="img" aria-labelledby="title desc">
+  <title id="title">M4 Mac mini underside power button</title>
+  <desc id="desc">Original straight-down illustration of the underside of a Mac mini (2024). The back edge, with the three Thunderbolt ports, is at the top. A gold ring marks the power button, underneath the back corner below the Thunderbolt ports.</desc>
+
+  <!-- Original orthographic geometry based only on the public 127 mm square footprint. -->
+  <g>
+    <rect x="240" y="50" width="520" height="520" rx="54" fill="#c9ccd0" stroke="#eef0f2" stroke-width="5"/>
+    <rect x="251" y="61" width="498" height="498" rx="45" fill="#aeb2b7" stroke="#94989f" stroke-width="2"/>
+  </g>
+
+  <!-- Clean circular base with one restrained highlight. -->
+  <circle cx="500" cy="310" r="209" fill="#777b81" stroke="#d5d7da" stroke-width="4"/>
+  <circle cx="500" cy="310" r="190" fill="#62666d" stroke="#858990" stroke-width="2"/>
+  <ellipse cx="465" cy="267" rx="118" ry="90" fill="#ffffff" opacity="0.035"/>
+
+  <!-- Thirty-six rounded radial vent slots. -->
+  <path aria-label="36 rounded radial vent slots" d="M500 116 L500 86 M533.7 118.9 L538.9 89.4 M566.4 127.7 L576.6 99.5 M597 142 L612 116 M624.7 161.4 L644 138.4 M648.6 185.3 L671.6 166 M668 213 L694 198 M682.3 243.6 L710.5 233.4 M691.1 276.3 L720.6 271.1 M694 310 L724 310 M691.1 343.7 L720.6 348.9 M682.3 376.4 L710.5 386.6 M668 407 L694 422 M648.6 434.7 L671.6 454 M624.7 458.6 L644 481.6 M597 478 L612 504 M566.4 492.3 L576.6 520.5 M533.7 501.1 L538.9 530.6 M500 504 L500 534 M466.3 501.1 L461.1 530.6 M433.6 492.3 L423.4 520.5 M403 478 L388 504 M375.3 458.6 L356 481.6 M351.4 434.7 L328.4 454 M332 407 L306 422 M317.7 376.4 L289.5 386.6 M308.9 343.7 L279.4 348.9 M306 310 L276 310 M308.9 276.3 L279.4 271.1 M317.7 243.6 L289.5 233.4 M332 213 L306 198 M351.4 185.3 L328.4 166 M375.3 161.4 L356 138.4 M403 142 L388 116 M433.6 127.7 L423.4 99.5 M466.3 118.9 L461.1 89.4" fill="none" stroke="#41444a" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Back face, shown folded up above the back edge so the picture has a front/back cue.
+       Seen from below, the Thunderbolt end of the back panel is at image right. -->
+  <rect x="262" y="10" width="476" height="30" rx="8" fill="#c9ccd0" stroke="#9a9ea4" stroke-width="2"/>
+  <rect x="623" y="20" width="30" height="10" rx="5" fill="#2b2d31"/>
+  <rect x="663" y="20" width="30" height="10" rx="5" fill="#2b2d31"/>
+  <rect x="703" y="20" width="30" height="10" rx="5" fill="#2b2d31"/>
+
+  <!-- Power button: underneath, at the back corner below the Thunderbolt ports. -->
+  <circle cx="710" cy="112" r="22" fill="#777b81" stroke="#aeb1b6" stroke-width="2"/>
+  <path d="M710 96v14m-10-8a14 14 0 1 0 20 0" fill="none" stroke="#e9eaec" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="710" cy="112" r="34" fill="none" stroke="#d6b36a" stroke-width="7"/>
+</svg>
