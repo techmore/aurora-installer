@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Fixture tests for check-j773g-payload.py: one consistent payload must pass,
 # and each known J773g failure mode must fail its own check.
 # Needs root-free tools only: mkfs.ext4 -d, mkfs.btrfs --rootdir, cpio, zstd, zip.
@@ -55,9 +55,9 @@ make_payload() { # name ctxr_bin kernel_rel initrd_rel initrd_root_uuid closure_
   cat > "$p/bootfs/grub/grub.cfg" <<EOF
 set default=0
 menuentry "NixOS" --class nixos {
-  search --no-floppy --fs-uuid --set=root $boot_uuid
-  linux /kernels/Image init=/nix/store/$sys/init root=fstab
-  initrd /kernels/initrd
+  search --no-floppy --fs-uuid --set=drive1 $boot_uuid
+  linux (\$drive1)//kernels/Image init=/nix/store/$sys/init root=fstab
+  initrd (\$drive1)//kernels/initrd
 }
 EOF
   local s=$p/rootfs/root/nix/store
