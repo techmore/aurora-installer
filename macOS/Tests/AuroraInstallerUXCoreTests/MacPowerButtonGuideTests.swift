@@ -12,12 +12,15 @@
       }
     }
 
-    func testUndersideButtonDoesNotUseRearButtonArtwork() {
-      for model in ["Mac16,10", "Mac16,11"] {
-        let guide = MacPowerButtonGuide(deviceIdentifier: "unknown", modelIdentifier: model)
+    func testM4MiniUsesUndersideButtonArtworkBeforeFamilyMatch() {
+      for (device, model) in [("apple,j773g", "Mac16,10"), ("apple,j773s", "Mac16,11")] {
+        let guide = MacPowerButtonGuide(deviceIdentifier: device, modelIdentifier: model)
         XCTAssertEqual(guide, .desktopUnderside)
-        XCTAssertNil(guide.assetName)
+        XCTAssertEqual(guide.assetName, "M4MiniPowerButton")
+        XCTAssertTrue(guide.location.contains("rear-left"))
         XCTAssertTrue(guide.holdInstruction.contains("underside"))
+        XCTAssertTrue(guide.holdInstruction.contains("Continue holding for startup options"))
+        XCTAssertTrue(guide.holdInstruction.contains("Loading startup options"))
       }
     }
 

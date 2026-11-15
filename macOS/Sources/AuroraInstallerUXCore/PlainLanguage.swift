@@ -303,7 +303,7 @@
     public static let recoveryShutDown = "Shut down"
     public static let shutdownConfirmationTitle = "Shut down this Mac now?"
     public static let shutdownConfirmationBody =
-      "Save your work first. When this Mac is off, press and hold the power button until “Loading startup options” appears. Choose Aurora → Finish Installation, then sign in with your macOS account."
+      "Save your work first. When this Mac is off, press and hold the power button. Keep holding when “Continue holding for startup options” appears. Release when “Loading startup options” appears. Choose Aurora → Finish Installation, then sign in with your macOS account."
     public static let shutdownConfirmationAction = "Shut down"
     public static let mediaHeadline = "Connect the installation media"
 
@@ -322,7 +322,7 @@
         append("Shut down this Mac", "Save your work first.")
         append(
           "Hold the power button",
-          "When this Mac is off, press and hold the power button until “Loading startup options” appears."
+          "When this Mac is off, press and hold the power button. Keep holding when “Continue holding for startup options” appears. Release when “Loading startup options” appears."
         )
       }
       func authenticate() {
@@ -369,7 +369,7 @@
     public static let bootLoaderUpToDateMessage =
       "This installation already has this release’s boot loader. Nothing was changed."
     public static let bootLoaderShutdownBody =
-      "Save your work first. When this Mac is off, press and hold the power button until “Loading startup options” appears. Choose Aurora, then enter your macOS password in Aurora Installer."
+      "Save your work first. When this Mac is off, press and hold the power button. Keep holding when “Continue holding for startup options” appears. Release when “Loading startup options” appears. Choose Aurora, then enter your macOS password in Aurora Installer."
 
     /// Steps after the update is staged. Recovery enrolls the boot loader.
     public static func bootLoaderUpdateRecoverySteps(volumeName: String = "Aurora")
@@ -380,7 +380,7 @@
         RecoveryStep(
           number: 2, title: "Hold the power button",
           detail:
-            "When this Mac is off, press and hold the power button until “Loading startup options” appears."
+            "When this Mac is off, press and hold the power button. Keep holding when “Continue holding for startup options” appears. Release when “Loading startup options” appears."
         ),
         RecoveryStep(
           number: 3, title: "Update the boot loader",
