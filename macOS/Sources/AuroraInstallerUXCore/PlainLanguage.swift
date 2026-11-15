@@ -60,11 +60,16 @@
         ? "I have a current backup and approve the disk resize above."
         : "I have a current backup and approve the disk layout above."
     }
+    /// The two messages the Mac shows while its power button is held, in
+    /// the order they appear. Startup options open only after the second.
+    public static let startupOptionsHold =
+      "Keep holding when “Continue holding for startup options” appears. Release when “Loading startup options” appears."
+
     /// Shown on the plan for an M1 Pro, M1 Max or M1 Ultra Mac, whose iBoot
     /// may refuse the current Stage 1. The owner can still install.
     public static let stage1CautionHeadline = "Aurora may not start on this Mac yet"
     public static let stage1CautionRecovery =
-      "If the Mac shows “macOS needs to be reinstalled” or doesn’t start Aurora: shut it down, press and hold the power button until startup options appear, select Macintosh HD and choose Always Use. macOS starts as before. Then open this installer in macOS and use Erase Linux to remove the Aurora installation. macOS and its data are not changed by any of this."
+      "If the Mac shows “macOS needs to be reinstalled” or doesn’t start Aurora: shut it down and press and hold the power button. \(startupOptionsHold) Select Macintosh HD and choose Always Use. macOS starts as before. Then open this installer in macOS and use Erase Linux to remove the Aurora installation. macOS and its data are not changed by any of this."
     public static func planAcknowledgement(resizesMacOS: Bool, stage1Caution: Bool) -> String {
       stage1Caution
         ? String(planAcknowledgement(resizesMacOS: resizesMacOS).dropLast())
@@ -303,7 +308,7 @@
     public static let recoveryShutDown = "Shut down"
     public static let shutdownConfirmationTitle = "Shut down this Mac now?"
     public static let shutdownConfirmationBody =
-      "Save your work first. When this Mac is off, press and hold the power button until “Loading startup options” appears. Choose Aurora → Finish Installation, then sign in with your macOS account."
+      "Save your work first. When this Mac is off, press and hold the power button. \(startupOptionsHold) Choose Aurora → Finish Installation, then sign in with your macOS account."
     public static let shutdownConfirmationAction = "Shut down"
     public static let mediaHeadline = "Connect the installation media"
 
@@ -322,7 +327,7 @@
         append("Shut down this Mac", "Save your work first.")
         append(
           "Hold the power button",
-          "When this Mac is off, press and hold the power button until “Loading startup options” appears."
+          "When this Mac is off, press and hold the power button. \(startupOptionsHold)"
         )
       }
       func authenticate() {
@@ -369,7 +374,7 @@
     public static let bootLoaderUpToDateMessage =
       "This installation already has this release’s boot loader. Nothing was changed."
     public static let bootLoaderShutdownBody =
-      "Save your work first. When this Mac is off, press and hold the power button until “Loading startup options” appears. Choose Aurora, then enter your macOS password in Aurora Installer."
+      "Save your work first. When this Mac is off, press and hold the power button. \(startupOptionsHold) Choose Aurora, then enter your macOS password in Aurora Installer."
 
     /// Steps after the update is staged. Recovery enrolls the boot loader.
     public static func bootLoaderUpdateRecoverySteps(volumeName: String = "Aurora")
@@ -380,7 +385,7 @@
         RecoveryStep(
           number: 2, title: "Hold the power button",
           detail:
-            "When this Mac is off, press and hold the power button until “Loading startup options” appears."
+            "When this Mac is off, press and hold the power button. \(startupOptionsHold)"
         ),
         RecoveryStep(
           number: 3, title: "Update the boot loader",
