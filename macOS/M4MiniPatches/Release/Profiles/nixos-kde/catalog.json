@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 5,
+  "sequence": 1794694001,
+  "issuedAt": "2026-11-15T03:34:00Z",
+  "expiresAt": "2027-02-15T03:34:00Z",
+  "installer": {
+    "minimumVersion": "0.1.0",
+    "latestVersion": "0.1.0",
+    "downloadURL": "https://github.com/aurora-silicon/aurora-installer/releases/tag/v0.1.0-alpha.20"
+  },
+  "models": [
+    {
+      "deviceIdentifier": "apple,j773g",
+      "status": "enabled",
+      "asahiInstallerTag": "v0.9.2",
+      "asahiInstallerRevision": "dffbb38ef0c00c0431c609ecd8a00f42deb5b24c",
+      "asahiInstallerDataRevision": "42648e71423eba308d2e3e6228253eff679b068b",
+      "downstreamRevision": "9779fa452351c5a66ae583918b8e8120c044051f",
+      "metadataDigest": "sha256:db285f896eadce0a010beb17fb0da5bac5f5c293b8a80e497fe8ff1e7107bb3f",
+      "payloadDigest": "sha256:6b3133a13efa365e05d5c4bef1ba1cabb93bf062371b79d768379321fca1bc2d",
+      "evidenceRevision": "alpha20-j773g-ethernet-4248745d",
+      "metadataArtifact": {
+        "sourceURL": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/installer-data-nixos-kde.json",
+        "fileName": "installer-data-nixos-kde.json",
+        "sizeBytes": 16714
+      },
+      "payloadArtifact": {
+        "sourceURL": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-build-43451965403.zip",
+        "fileName": "nixos-kde-build-43451965403.zip",
+        "sizeBytes": 5910504128,
+        "parts": [
+          {
+            "sourceURL": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-build-43451965403.zip.part00",
+            "fileName": "nixos-kde-build-43451965403.zip.part00",
+            "sizeBytes": 1073741824,
+            "sha256": "sha256:09c0d23be061d39076702595c7c8d543a3ca593fd678a99fc1f6219aa4d633e1"
+          },
+          {
+            "sourceURL": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-build-43451965403.zip.part01",
+            "fileName": "nixos-kde-build-43451965403.zip.part01",
+            "sizeBytes": 1073741824,
+            "sha256": "sha256:dd70b47c58a745a22dadf884de665cb3d332cadce6f73c1d68223486db3c38fb"
+          },
+          {
+            "sourceURL": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-build-43451965403.zip.part02",
+            "fileName": "nixos-kde-build-43451965403.zip.part02",
+            "sizeBytes": 1073741824,
+            "sha256": "sha256:529d4cb6d20a899ee2d6c1d26be413295921da733b57831f4755a0a971fd9ed3"
+          },
+          {
+            "sourceURL": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-build-43451965403.zip.part03",
+            "fileName": "nixos-kde-build-43451965403.zip.part03",
+            "sizeBytes": 1073741824,
+            "sha256": "sha256:8e310bb4addb0bdcc60798ca2514aca146b48d5e908947563bab8ae373c3051f"
+          },
+          {
+            "sourceURL": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-build-43451965403.zip.part04",
+            "fileName": "nixos-kde-build-43451965403.zip.part04",
+            "sizeBytes": 1073741824,
+            "sha256": "sha256:7c41aec281c972af9bb85fe49037e7c3120eccd14f85b97a52bef4d6fce91abe"
+          },
+          {
+            "sourceURL": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-build-43451965403.zip.part05",
+            "fileName": "nixos-kde-build-43451965403.zip.part05",
+            "sizeBytes": 541795008,
+            "sha256": "sha256:6b3fd586410f4511bb18ca907fd1ec7607eaf163989c4725f61c6edbf48f3f6a"
+          }
+        ]
+      },
+      "installationProfile": "nixos-kde"
+    }
+  ]
+}

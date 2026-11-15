@@ -1,0 +1,644 @@
+{
+  "os_list": [
+    {
+      "omarchy_target": "apple-silicon-full-os",
+      "name": "Aurora NixOS (kde)",
+      "default_os_name": "Aurora NixOS",
+      "boot_object": "m1n1.bin",
+      "next_object": "m1n1/boot.bin",
+      "package": "nixos-kde-build-43451965403.zip",
+      "icon": "aurora-volume.icns",
+      "layout_kind": "nixos-btrfs-v1",
+      "installation_profile": "nixos-kde",
+      "recovery_gui": "omarchy-native-v1",
+      "partitions": [
+        {
+          "name": "EFI",
+          "type": "EFI",
+          "size": "536870912B",
+          "format": "fat",
+          "copy_firmware": true,
+          "copy_installer_data": true,
+          "source": "esp",
+          "volume_id": "0x1FE07AA4"
+        },
+        {
+          "name": "Boot",
+          "type": "Linux",
+          "size": "1073741824B",
+          "image": "boot.img"
+        },
+        {
+          "name": "Root",
+          "type": "Linux",
+          "size": "24149753856B",
+          "image": "root.img",
+          "expand": true
+        }
+      ],
+      "aurora_stage1": {
+        "kind": "common-raw-v1",
+        "qualified_machines": {
+          "j274ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j293ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j313ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j456ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j457ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j314sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j314cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j316sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j316cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j375cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j375dap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j413ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j415ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j473ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j493ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j414sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j414cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j416sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j416cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j474sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j475cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j475dap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j180dap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j433ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j434ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j504ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j613ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j615ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j514sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j514cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j514map": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j516sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j516cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j516map": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j575dap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j604ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j623ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j624ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j713ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j715ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j773gap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j614sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j614cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j616sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j616cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j773sap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j575cap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j813ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j704ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j815ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j873gap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j804ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j833ctap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "j700ap": [
+            "13.5",
+            "14.8.3",
+            "26.6",
+            "26.6.2",
+            "27.0",
+            "27.2"
+          ],
+          "k114cap": [
+            "27.2"
+          ],
+          "k114sap": [
+            "27.2"
+          ],
+          "k116cap": [
+            "27.2"
+          ],
+          "k116sap": [
+            "27.2"
+          ]
+        }
+      },
+      "aurora_stage2": {
+        "kind": "board-file-v1",
+        "board_members": {
+          "j105aap": "esp/m1n1/boot-j105a.bin",
+          "j120ap": "esp/m1n1/boot-j120.bin",
+          "j121ap": "esp/m1n1/boot-j121.bin",
+          "j127ap": "esp/m1n1/boot-j127.bin",
+          "j128ap": "esp/m1n1/boot-j128.bin",
+          "j132ap": "esp/m1n1/boot-j132.bin",
+          "j137ap": "esp/m1n1/boot-j137.bin",
+          "j140aap": "esp/m1n1/boot-j140a.bin",
+          "j140kap": "esp/m1n1/boot-j140k.bin",
+          "j152fap": "esp/m1n1/boot-j152f.bin",
+          "j160ap": "esp/m1n1/boot-j160.bin",
+          "j171ap": "esp/m1n1/boot-j171.bin",
+          "j172ap": "esp/m1n1/boot-j172.bin",
+          "j174ap": "esp/m1n1/boot-j174.bin",
+          "j180dap": "esp/m1n1/boot-j180d.bin",
+          "j185ap": "esp/m1n1/boot-j185.bin",
+          "j185fap": "esp/m1n1/boot-j185f.bin",
+          "j207ap": "esp/m1n1/boot-j207.bin",
+          "j208ap": "esp/m1n1/boot-j208.bin",
+          "j213ap": "esp/m1n1/boot-j213.bin",
+          "j214kap": "esp/m1n1/boot-j214k.bin",
+          "j215ap": "esp/m1n1/boot-j215.bin",
+          "j223ap": "esp/m1n1/boot-j223.bin",
+          "j230kap": "esp/m1n1/boot-j230k.bin",
+          "j274ap": "esp/m1n1/boot-j274.bin",
+          "j293ap": "esp/m1n1/boot-j293.bin",
+          "j313ap": "esp/m1n1/boot-j313.bin",
+          "j314cap": "esp/m1n1/boot-j314c.bin",
+          "j314sap": "esp/m1n1/boot-j314s.bin",
+          "j316cap": "esp/m1n1/boot-j316c.bin",
+          "j316sap": "esp/m1n1/boot-j316s.bin",
+          "j375cap": "esp/m1n1/boot-j375c.bin",
+          "j375dap": "esp/m1n1/boot-j375d.bin",
+          "j413ap": "esp/m1n1/boot-j413.bin",
+          "j414cap": "esp/m1n1/boot-j414c.bin",
+          "j414sap": "esp/m1n1/boot-j414s.bin",
+          "j415ap": "esp/m1n1/boot-j415.bin",
+          "j416cap": "esp/m1n1/boot-j416c.bin",
+          "j416sap": "esp/m1n1/boot-j416s.bin",
+          "j42dap": "esp/m1n1/boot-j42d.bin",
+          "j433ap": "esp/m1n1/boot-j433.bin",
+          "j434ap": "esp/m1n1/boot-j434.bin",
+          "j456ap": "esp/m1n1/boot-j456.bin",
+          "j457ap": "esp/m1n1/boot-j457.bin",
+          "j473ap": "esp/m1n1/boot-j473.bin",
+          "j474sap": "esp/m1n1/boot-j474s.bin",
+          "j475cap": "esp/m1n1/boot-j475c.bin",
+          "j475dap": "esp/m1n1/boot-j475d.bin",
+          "j493ap": "esp/m1n1/boot-j493.bin",
+          "j504ap": "esp/m1n1/boot-j504.bin",
+          "j514cap": "esp/m1n1/boot-j514c.bin",
+          "j514map": "esp/m1n1/boot-j514m.bin",
+          "j514sap": "esp/m1n1/boot-j514s.bin",
+          "j516cap": "esp/m1n1/boot-j516c.bin",
+          "j516map": "esp/m1n1/boot-j516m.bin",
+          "j516sap": "esp/m1n1/boot-j516s.bin",
+          "j575cap": "esp/m1n1/boot-j575c.bin",
+          "j575dap": "esp/m1n1/boot-j575d.bin",
+          "j604ap": "esp/m1n1/boot-j604.bin",
+          "j613ap": "esp/m1n1/boot-j613.bin",
+          "j614cap": "esp/m1n1/boot-j614c.bin",
+          "j614sap": "esp/m1n1/boot-j614s.bin",
+          "j615ap": "esp/m1n1/boot-j615.bin",
+          "j616cap": "esp/m1n1/boot-j616c.bin",
+          "j616sap": "esp/m1n1/boot-j616s.bin",
+          "j623ap": "esp/m1n1/boot-j623.bin",
+          "j624ap": "esp/m1n1/boot-j624.bin",
+          "j680ap": "esp/m1n1/boot-j680.bin",
+          "j700ap": "esp/m1n1/boot-j700.bin",
+          "j704ap": "esp/m1n1/boot-j704.bin",
+          "j713ap": "esp/m1n1/boot-j713.bin",
+          "j714cap": "esp/m1n1/boot-j714c.bin",
+          "j714sap": "esp/m1n1/boot-j714s.bin",
+          "j715ap": "esp/m1n1/boot-j715.bin",
+          "j716cap": "esp/m1n1/boot-j716c.bin",
+          "j716sap": "esp/m1n1/boot-j716s.bin",
+          "j71ap": "esp/m1n1/boot-j71.bin",
+          "j71bap": "esp/m1n1/boot-j71b.bin",
+          "j71sap": "esp/m1n1/boot-j71s.bin",
+          "j71tap": "esp/m1n1/boot-j71t.bin",
+          "j72ap": "esp/m1n1/boot-j72.bin",
+          "j72bap": "esp/m1n1/boot-j72b.bin",
+          "j72sap": "esp/m1n1/boot-j72s.bin",
+          "j72tap": "esp/m1n1/boot-j72t.bin",
+          "j73ap": "esp/m1n1/boot-j73.bin",
+          "j773gap": "esp/m1n1/boot-j773g.bin",
+          "j773sap": "esp/m1n1/boot-j773s.bin",
+          "j775cap": "esp/m1n1/boot-j775c.bin",
+          "j775dap": "esp/m1n1/boot-j775d.bin",
+          "j780ap": "esp/m1n1/boot-j780.bin",
+          "j804ap": "esp/m1n1/boot-j804.bin",
+          "j813ap": "esp/m1n1/boot-j813.bin",
+          "j815ap": "esp/m1n1/boot-j815.bin",
+          "j81ap": "esp/m1n1/boot-j81.bin",
+          "j82ap": "esp/m1n1/boot-j82.bin",
+          "j833ctap": "esp/m1n1/boot-j833ct.bin",
+          "j85ap": "esp/m1n1/boot-j85.bin",
+          "j85map": "esp/m1n1/boot-j85m.bin",
+          "j86ap": "esp/m1n1/boot-j86.bin",
+          "j86map": "esp/m1n1/boot-j86m.bin",
+          "j873gap": "esp/m1n1/boot-j873g.bin",
+          "j873sap": "esp/m1n1/boot-j873s.bin",
+          "j87ap": "esp/m1n1/boot-j87.bin",
+          "j87map": "esp/m1n1/boot-j87m.bin",
+          "j96ap": "esp/m1n1/boot-j96.bin",
+          "j97ap": "esp/m1n1/boot-j97.bin",
+          "j98aap": "esp/m1n1/boot-j98a.bin",
+          "j99aap": "esp/m1n1/boot-j99a.bin",
+          "k114cap": "esp/m1n1/boot-k114c.bin",
+          "k114sap": "esp/m1n1/boot-k114s.bin",
+          "k116cap": "esp/m1n1/boot-k116c.bin",
+          "k116sap": "esp/m1n1/boot-k116s.bin"
+        }
+      },
+      "aurora_macho_boot": {
+        "kind": "padded-ctxr-v1",
+        "stage1_member": "esp/aurora/stage1.macho",
+        "confined_members": [
+          "esp/m1n1/boot-ctxr-j575c.bin",
+          "esp/m1n1/boot-ctxr-j604.bin",
+          "esp/m1n1/boot-ctxr-j614c.bin",
+          "esp/m1n1/boot-ctxr-j614s.bin",
+          "esp/m1n1/boot-ctxr-j616c.bin",
+          "esp/m1n1/boot-ctxr-j616s.bin",
+          "esp/m1n1/boot-ctxr-j623.bin",
+          "esp/m1n1/boot-ctxr-j624.bin",
+          "esp/m1n1/boot-ctxr-j700.bin",
+          "esp/m1n1/boot-ctxr-j704.bin",
+          "esp/m1n1/boot-ctxr-j713.bin",
+          "esp/m1n1/boot-ctxr-j714c.bin",
+          "esp/m1n1/boot-ctxr-j714s.bin",
+          "esp/m1n1/boot-ctxr-j715.bin",
+          "esp/m1n1/boot-ctxr-j716c.bin",
+          "esp/m1n1/boot-ctxr-j716s.bin",
+          "esp/m1n1/boot-ctxr-j773g.bin",
+          "esp/m1n1/boot-ctxr-j773s.bin",
+          "esp/m1n1/boot-ctxr-j775c.bin",
+          "esp/m1n1/boot-ctxr-j775d.bin",
+          "esp/m1n1/boot-ctxr-j804.bin",
+          "esp/m1n1/boot-ctxr-j813.bin",
+          "esp/m1n1/boot-ctxr-j815.bin",
+          "esp/m1n1/boot-ctxr-j833ct.bin",
+          "esp/m1n1/boot-ctxr-j873g.bin",
+          "esp/m1n1/boot-ctxr-j873s.bin",
+          "esp/m1n1/boot-ctxr-k114c.bin",
+          "esp/m1n1/boot-ctxr-k114s.bin",
+          "esp/m1n1/boot-ctxr-k116c.bin",
+          "esp/m1n1/boot-ctxr-k116s.bin",
+          "esp/m1n1/boot-ctxr.bin"
+        ]
+      }
+    }
+  ]
+}

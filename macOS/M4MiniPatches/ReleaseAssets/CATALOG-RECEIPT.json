@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "profile": "nixos-kde",
+  "deviceIdentifier": "apple,j773g",
+  "catalogSha256": "d344475845ab6e7292bfe9933a6286eeed6db6a993077af1dec1379d6be206b6",
+  "trustRootSha256": "1fba873ce0fb89a20221bb0add62fe5a8746364339fbd9d3055bf86ad3b04618",
+  "payloadSha256": "6b3133a13efa365e05d5c4bef1ba1cabb93bf062371b79d768379321fca1bc2d",
+  "metadataSha256": "db285f896eadce0a010beb17fb0da5bac5f5c293b8a80e497fe8ff1e7107bb3f",
+  "sourceCatalog": "https://aurorasilicon.org/aurora-distributions/installer/Profiles/nixos-kde/channels/edge/catalog.signed.json"
+}

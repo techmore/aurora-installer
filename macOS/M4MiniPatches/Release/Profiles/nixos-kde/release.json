@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "default_channel": "edge",
+  "channels": {
+    "stable": {
+      "catalog_url": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-stable.catalog.signed.json"
+    },
+    "rc": {
+      "catalog_url": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-rc.catalog.signed.json"
+    },
+    "edge": {
+      "catalog_url": "https://github.com/techmore/aurora-installer/releases/download/v0.1.0-alpha.20.m4minipatches/nixos-kde-edge.catalog.signed.json"
+    }
+  },
+  "trust_root_fingerprint": "sha256:1fba873ce0fb89a20221bb0add62fe5a8746364339fbd9d3055bf86ad3b04618",
+  "helper_mach_service_name": "org.aurorasilicon.installer.helper",
+  "helper_code_signing_requirement": "identifier \"org.aurorasilicon.installer.helper\""
+}

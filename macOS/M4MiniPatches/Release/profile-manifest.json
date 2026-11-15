@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "sealed": true,
+  "profiles": {
+    "nixos-kde": {
+      "catalog_sha256": "d344475845ab6e7292bfe9933a6286eeed6db6a993077af1dec1379d6be206b6",
+      "sequence": 1794694001
+    }
+  }
+}
