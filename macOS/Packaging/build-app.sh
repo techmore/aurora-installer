@@ -42,7 +42,7 @@ if [[ ${AURORA_LOCAL_PAYLOAD_TEST_BUILD:-0} == "1" ]]; then
   swift_test_arguments=(-Xswiftc -O -Xswiftc -gnone)
 fi
 
-marketing_version="${AURORA_APP_VERSION:-0.1.0}"
+marketing_version="${AURORA_APP_VERSION:-0.1.0-alpha.20.m4minipatches}"
 # SMJobBless never replaces a helper with a lower build, so a developer build
 # defaults to its UTC build minute (YYMMDDHHMM): each one installs over the
 # helper an earlier one left, without anyone tracking numbers by hand.

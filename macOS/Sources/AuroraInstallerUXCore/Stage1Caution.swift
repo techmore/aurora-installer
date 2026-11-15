@@ -18,6 +18,9 @@
     private static let untriedM4Board =
       "Support for this Mac is experimental: the Aurora team has not started Aurora on one yet. It shares its M4-family chip and aura’s Stage 1 with a tested Mac, but its own board is untested, so Aurora may not start."
 
+    private static let unofficialJ773g =
+      "UNOFFICIAL TEST BUILD for Mac16,10 only. This is not an Aurora project release: it is ad-hoc signed, unnotarized, and its NixOS payload changes Alpha 20 Stage 2 only for the boot-proven J773g Ethernet device tree. It has not completed a clean install or first boot. Independent review is required before installation."
+
     private static let newMaxBoard =
       "Support for the 16-inch MacBook Pro with M4 Max is experimental: Aurora has run on one, but not from this installer, and the Linux device tree this installer uses for it has not started on one yet, so Aurora may not start."
 
@@ -38,7 +41,7 @@
       "apple,j623": untriedM4Board,
       "apple,j624": untriedM4Board,
       "apple,j715": untriedM4Board,
-      "apple,j773g": untriedM4Board,
+      "apple,j773g": unofficialJ773g,
       "apple,j614c": untriedM4Board,
       "apple,j773s": untriedM4Board,
       "apple,j575c": untriedM4Board,
