@@ -39,7 +39,8 @@ public struct AuroraInstallationSelection: Equatable, Codable, Sendable {
   public var distribution: AuroraDistribution
   public var desktop: AuroraDesktop
 
-  public init(distribution: AuroraDistribution = .fedora, desktop: AuroraDesktop? = nil) {
+  /// This unofficial single-profile build opens on the only payload it ships.
+  public init(distribution: AuroraDistribution = .nixos, desktop: AuroraDesktop? = .kde) {
     self.distribution = distribution
     self.desktop = desktop ?? distribution.availableDesktops[0]
   }

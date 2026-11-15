@@ -34,15 +34,18 @@ export CARGO_BUILD_JOBS="$build_jobs"
 # Local payload support is compiled only in an explicitly requested debug test
 # build. Release configuration always compiles it out.
 build_configuration=release
-swift_test_arguments=()
+swift_build_arguments=(--configuration "$build_configuration")
 if [[ ${AURORA_LOCAL_PAYLOAD_TEST_BUILD:-0} == "1" ]]; then
   [[ ${AURORA_DEVELOPER_BUILD:-0} == "1" ]] \
     || fail "local payload test builds require a sealed developer build"
   build_configuration=debug
-  swift_test_arguments=(-Xswiftc -O -Xswiftc -gnone)
+  swift_build_arguments=(
+    --configuration "$build_configuration"
+    -Xswiftc -O -Xswiftc -gnone
+  )
 fi
 
-marketing_version="${AURORA_APP_VERSION:-0.1.0}"
+marketing_version="${AURORA_APP_VERSION:-0.1.0-alpha.20.m4minipatches}"
 # SMJobBless never replaces a helper with a lower build, so a developer build
 # defaults to its UTC build minute (YYMMDDHHMM): each one installs over the
 # helper an earlier one left, without anyone tracking numbers by hand.
@@ -207,8 +210,7 @@ swift_tool="$(xcrun --find swift)"
 (
   cd "$package_directory"
   "$swift_tool" build \
-    --configuration "$build_configuration" \
-    "${swift_test_arguments[@]}" \
+    "${swift_build_arguments[@]}" \
     --jobs "$build_jobs"
 )
 binary_directory="$({
@@ -243,8 +245,7 @@ fi
 (
   cd "$package_directory"
   "$swift_tool" build \
-    --configuration "$build_configuration" \
-    "${swift_test_arguments[@]}" \
+    "${swift_build_arguments[@]}" \
     --jobs "$build_jobs" \
     --product AuroraAppleInstallerHelper \
     "${helper_link_arguments[@]}"
@@ -274,6 +275,8 @@ install -m 0755 "$restore_image_source" "$restore_image_path"
 python3 "$package_directory/RestoreImage/verify-build.py" "$restore_image_path" >/dev/null \
   || fail "the decoder copy differs from its recorded build"
 install -m 0444 "$package_directory/RestoreImage/LICENSE" "$resources/omarchy-restore-image.LICENSE"
+install -m 0444 "$package_directory/../LICENSE" "$resources/Aurora-Installer.LICENSE"
+git -C "$package_directory/.." rev-parse HEAD > "$resources/Aurora-Installer.source-revision"
 install -m 0755 "$app_binary" "$contents/MacOS/$packaged_executable_name"
 install -m 0755 "$helper_binary" "$helper_path"
 # Strip only installed Swift executables, before any final signature or cdhash.

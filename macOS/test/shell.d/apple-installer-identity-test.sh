@@ -109,7 +109,7 @@ done
 git -C "$ROOT" ls-files -z --cached --others --exclude-standard >"$test_tmp/tracked" ||
   fail "git lists the source files"
 mapfile -d '' -t tracked <"$test_tmp/tracked"
-exempt='^(docs|evidence|Design)/|\.md$|^Packaging/identity\.conf$|^Release/release\.json$|^scripts/release-inputs.*\.template\.json$'
+exempt='^(docs|evidence|Design)/|^M4MiniPatches/(Release|ReleaseAssets)/|\.md$|^Packaging/identity\.conf$|^Release/release\.json$|^scripts/release-inputs.*\.template\.json$'
 scanned=()
 for file in "${tracked[@]}"; do
   # Scan the working tree, including new names and excluding deleted files.
