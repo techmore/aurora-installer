@@ -13,7 +13,7 @@ import urllib.request
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-TAG = "v0.1.0-alpha.20.m4minipatches"
+TAG = "v0.1.0-alpha.21.m4minipatches"
 RELEASE_BASE = f"https://github.com/techmore/aurora-installer/releases/download/{TAG}"
 PROFILE = "nixos-kde"
 PAYLOAD = "nixos-kde-build-43451965403.zip"
