@@ -33,13 +33,16 @@ The vendor-firmware initrd unit is reported, not judged: its failure under
 kernel A on hardware is an open blocker that a payload file check cannot
 settle.
 
-Needs: python3 >= 3.11, debugfs (e2fsprogs), btrfs (btrfs-progs), zstd.
+Needs: python3 >= 3.11, debugfs (e2fsprogs), zstd, and for root.img either
+Linux with root or passwordless sudo (read-only loop mount, preferred) or
+btrfs-progs (``btrfs restore``; small files fail closed, see BtrfsReader).
 Writes a JSON receipt; exit status 0 only when every check passes.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gzip
 import hashlib
 import json
@@ -264,13 +267,80 @@ class Ext4Reader:
 
 
 class BtrfsReader:
-    """Reads files from an unmounted btrfs image with `btrfs restore`."""
+    """Reads a btrfs image without trusting the host's own filesystem.
 
-    def __init__(self, image: Path, work: Path):
+    Paths are image paths.  ``prefix`` is the subvolume directory (``/root``,
+    ``/@`` or ``""``) seen from the top-level subvolume; an absolute symlink
+    inside the image resolves against that subvolume, never against the host.
+
+    Backends (``_materialize`` returns a local directory that holds ``path``):
+
+    mount    read-only loop mount of the top-level subvolume (Linux, root or
+             passwordless sudo).  The kernel driver reads inline and
+             compressed extents exactly as the installed system will.
+    restore  ``btrfs restore`` into scratch directories.  btrfs-progs 6.6.3
+             cannot decode the zstd-compressed inline extents that
+             ``mkfs.btrfs --compress`` writes ("zstd frame incomplete", which
+             ``-i`` turns into exit 0): it restored the Alpha 20 closure fstab
+             (596 bytes, 369 compressed) as 0 bytes.  So any regular file it
+             restores below ``RESTORE_TRUSTED_BYTES`` is refused, and the gate
+             fails closed instead of judging an unread file.
+    """
+
+    # Inline extents hold at most min(max_inline, sectorsize - 1) bytes
+    # (2048 by default); every file under a sector is suspect for restore.
+    RESTORE_TRUSTED_BYTES = 4096
+
+    def __init__(self, image: Path, work: Path, backend: str = "auto"):
         self.image = image
         self.work = work
         self.n = 0
+        self.mountpoint: Path | None = None
+        self.sudo: list[str] = []
+        self.note = ""
+        if backend not in ("auto", "mount", "restore"):
+            raise Failure(f"unknown btrfs reader {backend}")
+        if backend in ("auto", "mount"):
+            why = self._mount()
+            if why and backend == "mount":
+                raise Failure(f"btrfs read-only mount of {image.name} failed: {why}")
+            if why:
+                self.note = f"mount unavailable ({why}); btrfs restore, fail-closed on small files"
+        self.backend = "mount" if self.mountpoint else "restore"
+        if self.backend == "restore" and shutil.which("btrfs") is None:
+            raise Failure(f"{image.name}: no read-only mount and no btrfs-progs; cannot read root.img")
 
+    # ---------------------------------------------------------------- mount
+    def _mount(self) -> str | None:
+        if sys.platform != "linux":
+            return f"not Linux ({sys.platform})"
+        if os.geteuid() != 0:
+            if shutil.which("sudo") is None or run(["sudo", "-n", "true"]).returncode != 0:
+                return "not root and no passwordless sudo"
+            self.sudo = ["sudo", "-n"]
+        mnt = self.work / "root-ro"
+        mnt.mkdir()
+        errors = []
+        # nologreplay: a read-only mount must not replay a log tree either.
+        for opts in ("ro,loop,subvolid=5,rescue=nologreplay", "ro,loop,subvolid=5"):
+            r = run(self.sudo + ["mount", "-t", "btrfs", "-o", opts, str(self.image), str(mnt)])
+            if r.returncode == 0:
+                self.mountpoint = mnt
+                self.note = f"read-only loop mount ({opts})"
+                return None
+            errors.append(r.stderr.decode(errors="replace").strip()[-200:])
+        mnt.rmdir()
+        return "; ".join(errors)
+
+    def close(self) -> None:
+        if self.mountpoint is not None:
+            r = run(self.sudo + ["umount", str(self.mountpoint)])
+            if r.returncode != 0:
+                raise Failure(f"cannot unmount {self.mountpoint}: {r.stderr.decode(errors='replace')[-200:]}")
+            self.mountpoint.rmdir()
+            self.mountpoint = None
+
+    # -------------------------------------------------------------- restore
     def _restore(self, path: str) -> Path:
         self.n += 1
         out = self.work / f"r{self.n}"
@@ -283,16 +353,72 @@ class BtrfsReader:
             raise Failure(f"btrfs restore {path}: {r.stderr.decode(errors='replace')[-300:]}")
         return out
 
+    def _materialize(self, full: str) -> Path:
+        return self.mountpoint if self.mountpoint is not None else self._restore(full)
+
+    # -------------------------------------------------------------- resolve
+    def resolve(self, path: str, prefix: str, follow_last: bool = True) -> Path:
+        """Local path for image `path` in subvolume `prefix`, symlinks
+        resolved inside the image (the leaf too unless follow_last=False)."""
+        parts = [p for p in path.strip("/").split("/") if p]
+        hops = 0
+        while True:
+            base = self._materialize(os.path.normpath(prefix + "/" + "/".join(parts)))
+            cur: list[str] = []
+            for i, p in enumerate(parts):
+                if p == "..":
+                    if cur:
+                        cur.pop()
+                    continue
+                if p == ".":
+                    continue
+                cur.append(p)
+                local = base / (prefix.strip("/") + "/" + "/".join(cur)).lstrip("/")
+                last = i == len(parts) - 1
+                if local.is_symlink() and (follow_last or not last):
+                    hops += 1
+                    if hops > 40:
+                        raise Failure(f"{self.image.name}: symlink loop at {path}")
+                    target = os.readlink(local)
+                    rest = parts[i + 1:]
+                    head = [] if target.startswith("/") else cur[:-1]
+                    parts = head + [t for t in target.split("/") if t] + rest
+                    break
+                if not (local.exists() or local.is_symlink()):
+                    raise Failure(f"{self.image.name}: {prefix or '/'}:{'/'.join(cur)} not found")
+            else:
+                return base / (prefix.strip("/") + "/" + "/".join(cur)).lstrip("/")
+
     def locate(self, path: str, prefixes: list[str]) -> tuple[Path, str]:
-        """Restore `path`, trying each subvolume prefix; return (local path, prefix)."""
+        """(local path, prefix) for the first subvolume prefix holding `path`;
+        intermediate symlinks are resolved, the leaf is not."""
         for prefix in prefixes:
-            full = prefix + path
-            out = self._restore(full)
-            local = out / full.lstrip("/")
-            if local.exists() or local.is_symlink():
-                return local, prefix
-            shutil.rmtree(out, ignore_errors=True)
+            try:
+                return self.resolve(path, prefix, follow_last=False), prefix
+            except Failure:
+                continue
         raise Failure(f"{self.image.name}: {path} not found under any of {prefixes}")
+
+    def read(self, path: str, prefix: str) -> bytes:
+        """Bytes of the regular file at `path`, every symlink resolved."""
+        local = self.resolve(path, prefix)
+        if not local.is_file():
+            raise Failure(f"{self.image.name}: {prefix or '/'}:{path} is not a regular file")
+        try:
+            data = local.read_bytes()
+        except OSError as exc:
+            raise Failure(f"{self.image.name}: cannot read {prefix or '/'}:{path}: {exc}") from exc
+        if self.backend == "restore" and len(data) < self.RESTORE_TRUSTED_BYTES:
+            raise Failure(f"{self.image.name}: {prefix or '/'}:{path} restored as {len(data)} bytes; "
+                          f"btrfs restore is not trusted below {self.RESTORE_TRUSTED_BYTES} bytes "
+                          "(inline/compressed extents); run the gate on Linux with a read-only loop mount")
+        return data
+
+    def listdir(self, path: str, prefix: str) -> list[str]:
+        local = self.resolve(path, prefix)
+        if not local.is_dir():
+            raise Failure(f"{self.image.name}: {prefix or '/'}:{path} is not a directory")
+        return sorted(os.listdir(local))
 
 
 # ---------------------------------------------------------------------- initrd
@@ -499,6 +625,9 @@ def main() -> int:
     ap.add_argument("--esp-volume-id", help="FAT volume id the installer formats, e.g. 0x1FE07AA4")
     ap.add_argument("--kernel-config", type=Path,
                     help="the GRUB kernel's .config; CONFIG_X=y counts as built in for initrd-firstboot")
+    ap.add_argument("--btrfs-reader", choices=("auto", "mount", "restore"), default="auto",
+                    help="root.img reader: read-only loop mount (Linux, root or sudo -n) or btrfs restore; "
+                         "auto mounts when it can.  restore refuses small files it cannot be trusted with")
     ap.add_argument("--receipt", type=Path, required=True)
     ap.add_argument("--work", type=Path, help="scratch directory (default: temp)")
     args = ap.parse_args()
@@ -511,7 +640,7 @@ def main() -> int:
 
     work_ctx = tempfile.TemporaryDirectory(dir=args.work) if args.work else tempfile.TemporaryDirectory()
     try:
-        with work_ctx as tmp, zipfile.ZipFile(args.payload) as z:
+        with work_ctx as tmp, zipfile.ZipFile(args.payload) as z, contextlib.ExitStack() as mounted:
             work = Path(tmp)
             facts["payload_sha256"] = sha256_file(args.payload)
             members = {i.filename for i in z.infolist() if not i.is_dir()}
@@ -557,9 +686,11 @@ def main() -> int:
                 by_uuid[esp_uuid] = "esp"
             by_label = {i["label"]: n for n, i in images.items() if i["label"]}
             boot_fs = Ext4Reader(work / "boot.img") if images["boot.img"]["fs"] == "ext4" else None
-            root_reader = BtrfsReader(work / "root.img", work) if images["root.img"]["fs"] == "btrfs" else None
-            if boot_fs is None or root_reader is None:
+            if boot_fs is None or images["root.img"]["fs"] != "btrfs":
                 raise Failure(f"unexpected layout {images}; expected ext4 boot.img and btrfs root.img")
+            root_reader = BtrfsReader(work / "root.img", work, args.btrfs_reader)
+            mounted.callback(root_reader.close)  # unmount before the scratch directory goes
+            facts["root_reader"] = {"backend": root_reader.backend, "detail": root_reader.note}
             subvol_prefixes = ["/root", "/@", ""]
 
             grub_cfg = None
@@ -585,8 +716,8 @@ def main() -> int:
                 if target == "boot.img":
                     return boot_fs.read(rel), "boot.img"
                 if target == "root.img":
-                    local, _ = root_reader.locate(rel, [""] + subvol_prefixes)
-                    return local.read_bytes(), "root.img"
+                    _, prefix = root_reader.locate(rel, [""] + subvol_prefixes)
+                    return root_reader.read(rel, prefix), "root.img"
                 raise Failure(f"GRUB path {path} names drive {drive or 'root'}={value}, not a written filesystem")
 
             refs: list[dict] = []  # every filesystem reference we must resolve
@@ -697,42 +828,56 @@ def main() -> int:
                     continue
                 system = init.rsplit("/", 1)[0]
                 problems = []
+                _, prefix = root_reader.locate(f"{system}/kernel", subvol_prefixes)
                 for leaf, expect in (("kernel", sha256_bytes(kernel)), ("initrd", sha256_bytes(initrd))):
-                    link, prefix = root_reader.locate(f"{system}/{leaf}", subvol_prefixes)
-                    target = os.readlink(link) if link.is_symlink() else None
-                    if target:
-                        local, _ = root_reader.locate(target, [prefix])
-                        got = sha256_file(local)
-                    else:
-                        got = sha256_file(link)
+                    try:
+                        got = sha256_bytes(root_reader.read(f"{system}/{leaf}", prefix))
+                    except Failure as exc:
+                        problems.append(f"closure {leaf} unreadable: {exc}")
+                        continue
                     if got != expect:
                         problems.append(f"closure {leaf} {got} != GRUB {leaf} {expect}")
-                link, prefix = root_reader.locate(f"{system}/kernel-modules", subvol_prefixes)
+                link = root_reader.resolve(f"{system}/kernel-modules", prefix, follow_last=False)
                 km = os.readlink(link) if link.is_symlink() else f"{system}/kernel-modules"
-                kmdir, _ = root_reader.locate(f"{km}/lib/modules", [prefix])
-                for rel in sorted(os.listdir(kmdir)):
+                for rel in root_reader.listdir(f"{system}/kernel-modules/lib/modules", prefix):
                     releases[f"grub[{idx}].closure:kernel-modules/{rel}"] = rel
-                    builtin = kmdir / rel / "modules.builtin"
-                    if rel == krel and builtin.is_file():
-                        firstboot[-1]["closure_builtin"] = {
-                            re.sub(r"\.ko(\..*)?$", "", l.strip().rsplit("/", 1)[-1]).replace("-", "_")
-                            for l in builtin.read_text(errors="replace").splitlines() if l.strip()}
-                etc_link, _ = root_reader.locate(f"{system}/etc", [prefix])
+                    if rel != krel:
+                        continue
+                    # NixOS kernel-modules is a symlink tree; read through it.
+                    builtin_path = f"{system}/kernel-modules/lib/modules/{rel}/modules.builtin"
+                    try:
+                        builtin_text = root_reader.read(builtin_path, prefix).decode(errors="replace")
+                    except Failure as exc:
+                        firstboot[-1]["closure_builtin_error"] = str(exc)
+                        continue
+                    firstboot[-1]["closure_builtin"] = {
+                        re.sub(r"\.ko(\..*)?$", "", l.strip().rsplit("/", 1)[-1]).replace("-", "_")
+                        for l in builtin_text.splitlines() if l.strip()}
+                etc_link = root_reader.resolve(f"{system}/etc", prefix, follow_last=False)
                 etc = os.readlink(etc_link) if etc_link.is_symlink() else f"{system}/etc"
-                fstab_link, _ = root_reader.locate(f"{etc}/fstab", [prefix])
-                chain = [f"{etc}/fstab"]
-                hops = 0
-                while fstab_link.is_symlink() and hops < 8:
-                    t = os.readlink(fstab_link)
+                # Record the symlink chain; the bytes come from the reader,
+                # which resolves every hop inside the image.
+                cur = f"{etc}/fstab"
+                chain = [cur]
+                hop = root_reader.resolve(cur, prefix, follow_last=False)
+                while hop.is_symlink() and len(chain) < 9:
+                    t = os.readlink(hop)
+                    cur = t if t.startswith("/") else f"{os.path.dirname(cur)}/{t}"
                     chain.append(t)
-                    fstab_link, _ = root_reader.locate(t if t.startswith("/") else f"{etc}/{t}", [prefix])
-                    hops += 1
-                fstab_text = fstab_link.read_text()
+                    hop = root_reader.resolve(cur, prefix, follow_last=False)
+                try:
+                    fstab_text = root_reader.read(f"{etc}/fstab", prefix).decode(errors="replace")
+                    fstab_error = None
+                except Failure as exc:
+                    fstab_text, fstab_error = "", str(exc)
                 facts.setdefault("closure_fstab", {})[f"entry{idx}"] = {
-                    "chain": chain, "bytes": len(fstab_text), "text": fstab_text[-2000:]}
-                if not fstab_mounts(fstab_text):
-                    problems.append(f"closure fstab {' -> '.join(chain)} is empty or unreadable "
-                                    f"({len(fstab_text)} bytes restored)")
+                    "chain": chain, "bytes": len(fstab_text), "text": fstab_text[-2000:],
+                    "reader": root_reader.backend, "error": fstab_error}
+                if fstab_error:
+                    problems.append(f"closure fstab {' -> '.join(chain)} unreadable: {fstab_error}")
+                elif not fstab_mounts(fstab_text):
+                    problems.append(f"closure fstab {' -> '.join(chain)} has no mounts "
+                                    f"({len(fstab_text)} bytes)")
                 for mnt, spec in fstab_mounts(fstab_text).items():
                     if mnt == "/" and spec.startswith("/dev/mapper/"):
                         # Reported, not judged: the stock first-boot conversion
@@ -762,12 +907,15 @@ def main() -> int:
                 if not fb["units"]:
                     fb_bad.append({"entry": fb["entry"], "problem": "no first-boot initrd unit found"})
                 fb_bad += [dict(m, entry=fb["entry"], problem="program not in initrd") for m in fb["missing"]]
-                fb_bad += [dict(n, entry=fb["entry"], problem=f"module not built in or in initrd for {fb['release']}")
-                           for n in unmet]
+                why = f"module not built in or in initrd for {fb['release']}"
+                if "closure_builtin_error" in fb:
+                    why += f" (closure modules.builtin unreadable: {fb['closure_builtin_error']})"
+                fb_bad += [dict(n, entry=fb["entry"], problem=why) for n in unmet]
                 fb_report.append({"entry": fb["entry"], "release": fb["release"], "units": fb["units"],
                                   "needs": sorted({n["module"] for n in fb["needs"]}),
                                   "builtin_source": ("closure modules.builtin" if "closure_builtin" in fb else
-                                                     "none") + (" + --kernel-config" if builtin_cfg else "")})
+                                                     "none") + (" + --kernel-config" if builtin_cfg else ""),
+                                  "closure_builtin_error": fb.get("closure_builtin_error")})
             facts["initrd_firstboot"] = fb_report
             record("initrd-firstboot", not fb_bad, fb_bad or "first-boot units resolve under this kernel")
 

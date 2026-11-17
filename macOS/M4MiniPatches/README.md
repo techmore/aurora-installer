@@ -26,7 +26,7 @@ Each step refuses to run on the output of a failed earlier step.
 1. Build the NixOS payload ZIP whose kernel, module tree, initrd and system
    closure all come from one kernel A release, with the patched Stage 2 under
    both `esp/m1n1/boot-j773g.bin` and `esp/m1n1/boot-ctxr-j773g.bin`.
-2. Gate it (Linux host with e2fsprogs, btrfs-progs and zstd):
+2. Gate it on Linux as root or with passwordless `sudo` (e2fsprogs and zstd; the MacBook Lima guest qualifies). The gate reads `root.img` through a read-only loop mount: the image's small files are zstd-compressed inline extents, which `btrfs restore` from btrfs-progs 6.6 returns as 0 bytes. Without a mount it falls back to `btrfs restore` and fails closed on every file under 4 KiB (`--btrfs-reader mount|restore|auto`):
 
    ```sh
    macOS/M4MiniPatches/check-j773g-payload.py nixos-kde-build-43451965403.zip \
@@ -46,7 +46,9 @@ Each step refuses to run on the output of a failed earlier step.
    in the initrd and the kernel support its scripts need (dm-crypt, the root
    filesystem) for that kernel release (`--kernel-config` adds the kernel's
    `CONFIG_*=y` built-ins). `test-check-j773g-payload.sh` covers
-   the pass case and each failure mode with small fixtures.
+   the pass case and each failure mode with small fixtures, including inline
+   and zstd-compressed inline closure files and the fail-closed restore path
+   (it needs `mkfs.btrfs --compress`, btrfs-progs 6.13 or newer).
 3. Generate the sealed catalog with `make-release-inputs.py --gate-receipt
    PAYLOAD-GATE.json ...`. It refuses a receipt that did not pass on these exact
    payload bytes, and records the gate results in `CATALOG-RECEIPT.json`.

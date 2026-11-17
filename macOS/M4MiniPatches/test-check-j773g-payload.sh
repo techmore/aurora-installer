@@ -1,13 +1,22 @@
 #!/bin/bash
 # Fixture tests for check-j773g-payload.py: one consistent payload must pass,
 # and each known J773g failure mode must fail its own check.
-# Needs root-free tools only: mkfs.ext4 -d, mkfs.btrfs --rootdir, cpio, zstd, zip.
+# Builds images with root-free tools only: mkfs.ext4 -d, mkfs.btrfs --rootdir
+# (btrfs-progs >= 6.13 for --compress), cpio, zstd, zip.  The gate reads
+# root.img through a read-only loop mount, so run this on Linux as root or
+# with passwordless sudo; the small closure files are inline extents (and
+# zstd-compressed inline extents in the compressed cases), which btrfs restore
+# is not trusted with.  E.g. in the Lima guest:
+#   PATH=$(nix build --no-link --print-out-paths nixpkgs#btrfs-progs)/bin:$PATH ./test-check-j773g-payload.sh
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 checker=${CHECKER:-$here/check-j773g-payload.py}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
+mkfs_help=$(mkfs.btrfs --help 2>&1 || true)  # --help exits non-zero
+[[ $mkfs_help == *--compress* ]] \
+  || { echo "mkfs.btrfs $(mkfs.btrfs --version 2>&1 | head -1) has no --compress (need btrfs-progs >= 6.13)" >&2; exit 2; }
 
 rel_a=7.3.0-m4atlrx-m4test-j773g-fullchain-v2-20261115
 boot_uuid=41dc57cf-2d07-50f9-ba96-7c95cde85ada
@@ -58,7 +67,10 @@ initrd() { # out module_release fstab_root_uuid [firstboot: good|no-exec|no-dmcr
 }
 
 make_payload() { # name ctxr_bin kernel_rel initrd_rel initrd_root_uuid closure_rel [firstboot]
-  local name=$1 p=$work/$1
+  # Env: COMPRESS=zstd compresses root.img files (small ones become compressed
+  # inline extents); CLOSURE_BUILTIN=dmcrypt makes the closure's
+  # modules.builtin a NixOS-style symlink into the kernel package listing dm-crypt.
+  local name=$1 p=$work/$1 compress=${COMPRESS:-no} cbuiltin=${CLOSURE_BUILTIN:-empty}
   mkdir -p "$p/esp/m1n1" "$p/bootfs/grub" "$p/bootfs/kernels" "$p/rootfs/root/nix/store"
   cp "$work/stage2-stock.bin" "$p/esp/m1n1/boot.bin"
   cp "$work/stage2-stock.bin" "$p/esp/m1n1/boot-ctxr.bin"
@@ -83,39 +95,76 @@ EOF
   ln -s "/nix/store/$km" "$s/$sys/kernel-modules"
   ln -s "/nix/store/$etcp/etc" "$s/$sys/etc"
   printf '#!/bin/sh\n' > "$s/$sys/init"
-  : > "$s/$km/lib/modules/$6/modules.builtin"
+  if [[ $cbuiltin == dmcrypt ]]; then
+    mkdir -p "$s/$kpkg/lib/modules/$6"
+    printf 'kernel/drivers/md/dm-mod.ko\nkernel/drivers/md/dm-crypt.ko\nkernel/fs/btrfs/btrfs.ko\n' \
+      > "$s/$kpkg/lib/modules/$6/modules.builtin"
+    ln -s "/nix/store/$kpkg/lib/modules/$6/modules.builtin" "$s/$km/lib/modules/$6/modules.builtin"
+  else
+    : > "$s/$km/lib/modules/$6/modules.builtin"
+  fi
   printf '/dev/disk/by-uuid/%s / btrfs subvol=root 0 0\n/dev/disk/by-uuid/%s /boot ext4 defaults 0 2\n' \
     "$root_uuid" "$boot_uuid" > "$s/$fst/fstab"
   ln -s "/nix/store/$fst/fstab" "$s/$etcp/etc/fstab"
   mkfs.ext4 -q -F -U "$boot_uuid" -L AURORA_BOOT -d "$p/bootfs" "$p/boot.img" 16M
   truncate -s 160M "$p/root.img"
-  if mkfs.btrfs --help 2>&1 | grep -q -- '--subvol'; then
-    mkfs.btrfs -q -f -U "$root_uuid" -L aurora-root --rootdir "$p/rootfs" --subvol root "$p/root.img" >/dev/null
+  if [[ $mkfs_help == *--subvol* ]]; then
+    mkfs.btrfs -q -f -U "$root_uuid" -L aurora-root --compress "$compress" --rootdir "$p/rootfs" --subvol root "$p/root.img" >/dev/null
   else
     mv "$p/rootfs/root/nix" "$p/rootfs/nix"; rmdir "$p/rootfs/root"
-    mkfs.btrfs -q -f -U "$root_uuid" -L aurora-root --rootdir "$p/rootfs" "$p/root.img" >/dev/null
+    mkfs.btrfs -q -f -U "$root_uuid" -L aurora-root --compress "$compress" --rootdir "$p/rootfs" "$p/root.img" >/dev/null
   fi
   (cd "$p" && zip -q -r "$work/$name.zip" boot.img root.img esp)
 }
 
+extent_of() { # payload file-name -> "inline <compression>" | "regular" for the one regular file of that name
+  local img=$work/$1/root.img tree
+  for tree in 5 256; do btrfs inspect-internal dump-tree -t "$tree" "$img" 2>/dev/null || true; echo "@@TREE"; done \
+    | python3 -c '
+import re, sys
+name, found = sys.argv[1], set()
+for tree in sys.stdin.read().split("@@TREE"):
+    mode, names, ext = {}, {}, {}
+    for item in re.split(r"\n\titem \d+ ", tree):
+        k = re.match(r"key \((\d+) (\w+) \d+\)", item)
+        if not k: continue
+        ino, typ = k.groups()
+        if typ == "INODE_ITEM": mode[ino] = re.search(r" mode (\d+)", item).group(1)
+        elif typ == "INODE_REF": names.setdefault(ino, set()).update(re.findall(r"name: (\S+)", item))
+        elif typ == "EXTENT_DATA" and ino not in ext:
+            t = re.search(r"type \d+ \((\w+)\)", item).group(1)
+            c = re.search(r"compression \d+ \((\w+)\)", item)
+            ext[ino] = "inline " + (c.group(1) if c else "none") if t == "inline" else t
+    found |= {ext.get(i, "none") for i, n in names.items() if name in n and mode.get(i, "").startswith("100")}
+if len(found) != 1: sys.exit(f"{name}: extents {sorted(found)}")
+print(found.pop())' "$2"
+}
+
 expect() { # name expected_verdict failing_check
-  local name=$1 want=$2 check=${3:-}
+  local name=$1 want=$2 check=${3:-} reader=${READER:-auto} run=${RUN:-$1}
   set +e
   python3 "$checker" "$work/$name.zip" --stage2-sha256 "$patched" --esp-volume-id 0x1FE07AA4 \
-    --receipt "$work/$name.json" > "$work/$name.out" 2>&1
+    --btrfs-reader "$reader" --receipt "$work/$run.json" > "$work/$run.out" 2>&1
   local rc=$?
   set -e
-  local got; got=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["verdict"])' "$work/$name.json")
-  if [[ $got != "$want" ]]; then echo "FAIL $name: verdict $got, wanted $want"; cat "$work/$name.out"; cat "$work/$name.json"; exit 1; fi
-  if [[ $want == PASS && $rc -ne 0 ]] || [[ $want == FAIL && $rc -eq 0 ]]; then echo "FAIL $name: exit $rc"; exit 1; fi
-  if [[ -n $check ]] && ! grep -q "^FAIL  $check$" "$work/$name.out"; then
-    echo "FAIL $name: check $check did not fail"; cat "$work/$name.out"; exit 1
+  local got backend
+  got=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["verdict"])' "$work/$run.json")
+  backend=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["facts"].get("root_reader", {}).get("backend"))' "$work/$run.json")
+  if [[ $got != "$want" ]]; then echo "FAIL $run: verdict $got, wanted $want"; cat "$work/$run.out"; cat "$work/$run.json"; exit 1; fi
+  if [[ $want == PASS && $rc -ne 0 ]] || [[ $want == FAIL && $rc -eq 0 ]]; then echo "FAIL $run: exit $rc"; exit 1; fi
+  if [[ -n $check ]] && ! grep -q "^FAIL  $check$" "$work/$run.out"; then
+    echo "FAIL $run: check $check did not fail"; cat "$work/$run.out"; exit 1
   fi
-  echo "ok   $name -> $got${check:+ ($check)}"
+  if [[ $reader == auto && $backend != mount ]]; then
+    echo "FAIL $run: root.img read by '$backend', not the read-only mount (run as root or with sudo -n)"; exit 1
+  fi
+  echo "ok   $run -> $got${check:+ ($check)} [reader $backend]"
 }
 
 make_payload good "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$root_uuid" "$rel_a"
+[[ $(extent_of good fstab) == "inline none" ]] || { echo "FAIL good: closure fstab is not an inline extent"; exit 1; }
 expect good PASS
+echo "ok   good -> closure fstab is an uncompressed inline extent"
 make_payload stock-ctxr "$work/stage2-stock.bin" "$rel_a" "$rel_a" "$root_uuid" "$rel_a"
 expect stock-ctxr FAIL stage2-active
 make_payload stale-modules "$work/stage2-patched.bin" "$rel_a" 7.3.0 "$root_uuid" "$rel_a"
@@ -129,4 +178,23 @@ make_payload firstboot-no-exec "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$ro
 expect firstboot-no-exec FAIL initrd-firstboot
 make_payload firstboot-no-dmcrypt "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$root_uuid" "$rel_a" no-dmcrypt
 expect firstboot-no-dmcrypt FAIL initrd-firstboot
+
+# Small closure files as zstd-compressed inline extents (the Alpha 20 image's
+# shape): the closure fstab and modules.builtin must be read, not assumed.
+COMPRESS=zstd make_payload compressed-inline "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$root_uuid" "$rel_a"
+[[ $(extent_of compressed-inline fstab) == "inline zstd" ]] \
+  || { echo "FAIL compressed-inline: closure fstab is not a zstd inline extent"; exit 1; }
+expect compressed-inline PASS
+echo "ok   compressed-inline -> closure fstab is a zstd inline extent"
+# The initrd lacks dm-crypt; the closure's modules.builtin (a symlink into the
+# kernel package, compressed inline) says it is built in, so first boot resolves.
+COMPRESS=zstd CLOSURE_BUILTIN=dmcrypt make_payload closure-builtin "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$root_uuid" "$rel_a" no-dmcrypt
+[[ $(extent_of closure-builtin modules.builtin) == "inline zstd" ]] \
+  || { echo "FAIL closure-builtin: modules.builtin is not a zstd inline extent"; exit 1; }
+expect closure-builtin PASS
+# Without a mount the gate must fail closed on those files, never pass on them.
+READER=restore RUN=compressed-inline-restore expect compressed-inline FAIL closure-identity
+grep -q 'not trusted below' "$work/compressed-inline-restore.json" \
+  || { echo "FAIL compressed-inline-restore: no fail-closed reason in the receipt"; exit 1; }
+echo "ok   compressed-inline-restore -> fail-closed reason recorded"
 echo "ALL FIXTURE CASES PASS"
