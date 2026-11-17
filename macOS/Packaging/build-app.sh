@@ -114,15 +114,17 @@ sealed_catalog_signature="$release_directory/catalog.json.sig"
 if [[ $release_directory == "$package_directory/M4MiniPatches/Release" ]]; then
   python3 - "$release_directory" "$package_directory/M4MiniPatches/ReleaseAssets/CATALOG-RECEIPT.json" <<'PYCODE' \
     || fail "the M4MiniPatches catalog does not seal a gated payload"
-import hashlib, json, sys
+import hashlib, json, os, sys
 from pathlib import Path
 release, receipt_path = Path(sys.argv[1]), Path(sys.argv[2])
 receipt = json.loads(receipt_path.read_text())
 catalog = (release / "catalog.json").read_bytes()
 gate = receipt.get("payloadGate") or {}
 checks = ("stage2-active", "stage2-standard", "kernel-release", "closure-identity",
-          "initrd-modprobe", "root-identity")
-stage2 = "33ce5198c58766fb87e18f817a8f1f55d2141b2fcf619c8bf5c157470205a3c4"
+          "initrd-modprobe", "root-identity", "initrd-firstboot")
+# Stage 2 B (26.6.2 stub) unless the build names the 27.2-stub Stage 2.
+stage2 = os.environ.get("M4MINIPATCHES_STAGE2_SHA256",
+                        "33ce5198c58766fb87e18f817a8f1f55d2141b2fcf619c8bf5c157470205a3c4").lower()
 models = json.loads(catalog)["models"]
 ok = (
     receipt.get("catalogSha256") == hashlib.sha256(catalog).hexdigest()

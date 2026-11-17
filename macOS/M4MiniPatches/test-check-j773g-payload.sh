@@ -28,22 +28,36 @@ kernel() { # release -> file
   { head -c 4096 /dev/zero; printf 'Linux version %s (builder@test) #1 SMP\n' "$1"; head -c 4096 /dev/zero; } > "$2"
 }
 
-initrd() { # out module_release fstab_root_uuid
-  local d=$work/initrd-src
+initrd() { # out module_release fstab_root_uuid [firstboot: good|no-exec|no-dmcrypt]
+  local d=$work/initrd-src fb=${4:-good}
+  local fbs=nix/store/gggggggggggggggggggggggggggggggg-aurora-firstboot/lib/aurora
   rm -rf "$d"; mkdir -p "$d/etc" "$d/nix/store/ms-kernel-modules-shrunk/lib/modules/$2" "$d/etc/systemd/system"
   ln -s /nix/store/ms-kernel-modules-shrunk/lib/modules "$d/lib-modules-tmp"
   mkdir -p "$d/lib"; mv "$d/lib-modules-tmp" "$d/lib/modules"
-  printf 'kernel/drivers/watchdog/apple_wdt.ko\nkernel/drivers/nvme/host/nvme-apple.ko\n' \
+  printf 'kernel/drivers/watchdog/apple_wdt.ko\nkernel/drivers/nvme/host/nvme-apple.ko\nkernel/fs/btrfs/btrfs.ko\nkernel/drivers/md/dm-mod.ko\n' \
     > "$d/nix/store/ms-kernel-modules-shrunk/lib/modules/$2/modules.builtin"
+  [[ $fb == no-dmcrypt ]] || printf 'kernel/drivers/md/dm-crypt.ko\n' \
+    >> "$d/nix/store/ms-kernel-modules-shrunk/lib/modules/$2/modules.builtin"
+  # First-boot programs: /bin/true, modprobe, and the root conversion script
+  # that calls cryptsetup (needs dm-crypt) through a second store script.
+  mkdir -p "$d/bin" "$d/nix/store/k-kmod/bin" "$d/$fbs"
+  printf '#!/bin/sh\n' > "$d/bin/true"
+  printf '#!/bin/sh\n' > "$d/nix/store/k-kmod/bin/modprobe"
+  printf '#!/bin/sh\nexec /%s/encrypt-step "$@"\n' "$fbs" > "$d/$fbs/aurora-initrd-root"
+  printf '#!/bin/sh\ncryptsetup reencrypt --encrypt /dev/root\n' > "$d/$fbs/encrypt-step"
+  [[ $fb == no-exec ]] && rm "$d/$fbs/aurora-initrd-root"
+  mkdir -p "$d/etc/systemd/system/sysroot.mount.d"
+  printf '[Unit]\nRequires=aurora-initrd-root.service\nAfter=aurora-initrd-root.service\n' \
+    > "$d/etc/systemd/system/sysroot.mount.d/overrides.conf"
   : > "$d/nix/store/ms-kernel-modules-shrunk/lib/modules/$2/modules.dep"
   printf '/dev/disk/by-uuid/%s / btrfs x-initrd.mount,subvol=root,compress=zstd:1 0 0\n' "$3" > "$d/etc/fstab"
-  printf '[Service]\nExecStartPre=/nix/store/k-kmod/bin/modprobe apple_wdt\nExecStart=/bin/true\n' \
+  printf '[Service]\nTimeoutStartSec=infinity\nExecStartPre=/nix/store/k-kmod/bin/modprobe apple_wdt\nExecStart=/%s/aurora-initrd-root\n' "$fbs" \
     > "$d/etc/systemd/system/aurora-initrd-root.service"
   printf '[Service]\nExecStart=/bin/true\n' > "$d/etc/systemd/system/aurora-vendor-firmware.service"
   (cd "$d" && find . | cpio --quiet -o -H newc | zstd -q -19 -o "$1")
 }
 
-make_payload() { # name ctxr_bin kernel_rel initrd_rel initrd_root_uuid closure_rel
+make_payload() { # name ctxr_bin kernel_rel initrd_rel initrd_root_uuid closure_rel [firstboot]
   local name=$1 p=$work/$1
   mkdir -p "$p/esp/m1n1" "$p/bootfs/grub" "$p/bootfs/kernels" "$p/rootfs/root/nix/store"
   cp "$work/stage2-stock.bin" "$p/esp/m1n1/boot.bin"
@@ -51,7 +65,7 @@ make_payload() { # name ctxr_bin kernel_rel initrd_rel initrd_root_uuid closure_
   cp "$work/stage2-patched.bin" "$p/esp/m1n1/boot-j773g.bin"
   cp "$2" "$p/esp/m1n1/boot-ctxr-j773g.bin"
   kernel "$3" "$p/bootfs/kernels/Image"
-  initrd "$p/bootfs/kernels/initrd" "$4" "$5"
+  initrd "$p/bootfs/kernels/initrd" "$4" "$5" "${7:-good}"
   cat > "$p/bootfs/grub/grub.cfg" <<EOF
 set default=0
 menuentry "NixOS" --class nixos {
@@ -111,4 +125,8 @@ make_payload closure-modules "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$root
 expect closure-modules FAIL kernel-release
 make_payload stale-uuid "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$stale_uuid" "$rel_a"
 expect stale-uuid FAIL root-identity
+make_payload firstboot-no-exec "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$root_uuid" "$rel_a" no-exec
+expect firstboot-no-exec FAIL initrd-firstboot
+make_payload firstboot-no-dmcrypt "$work/stage2-patched.bin" "$rel_a" "$rel_a" "$root_uuid" "$rel_a" no-dmcrypt
+expect firstboot-no-dmcrypt FAIL initrd-firstboot
 echo "ALL FIXTURE CASES PASS"

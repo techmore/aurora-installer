@@ -22,6 +22,12 @@ Checks (each one must pass):
   root-identity      every UUID/label the initrd, GRUB and the closure fstab
                      name is one of the filesystems the installer writes, and
                      ``/`` and ``/boot`` name root.img and boot.img
+  initrd-firstboot   every first-boot initrd unit (aurora-*/omarchy-*, and each
+                     unit sysroot.mount requires) resolves under this kernel:
+                     its fatal Exec* programs exist in the initrd, and the
+                     kernel support its scripts need (dm-crypt for cryptsetup,
+                     the root filesystem driver) is built in or in the initrd
+                     module tree for the GRUB kernel's release
 
 The vendor-firmware initrd unit is reported, not judged: its failure under
 kernel A on hardware is an open blocker that a payload file check cannot
@@ -72,6 +78,103 @@ def sha256_file(path: Path) -> str:
 
 def run(args: list[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(args, capture_output=True, **kw)
+
+
+# ------------------------------------------------------------- first-boot units
+
+FIRSTBOOT_UNIT = re.compile(r"(^|/)(aurora|omarchy)[-_][^/]*\.service$")
+# Programs in first-boot scripts -> kernel modules they need at run time.
+SCRIPT_NEEDS = (
+    (re.compile(r"\bcryptsetup\b"), ("dm_crypt", "dm_mod")),
+    (re.compile(r"\bbtrfs\s+(filesystem|fi)\b"), ("btrfs",)),
+)
+FS_MODULE = {"btrfs": "btrfs", "ext4": "ext4", "vfat": "vfat", "xfs": "xfs"}
+# CONFIG_ symbols for the modules above, for --kernel-config.
+MODULE_CONFIG = {"dm_crypt": "DM_CRYPT", "dm_mod": "BLK_DEV_DM", "btrfs": "BTRFS_FS",
+                 "ext4": "EXT4_FS", "vfat": "VFAT_FS", "xfs": "XFS_FS",
+                 "apple_wdt": "APPLE_WATCHDOG"}
+
+
+def exec_lines(text: str):
+    """(directive, program, fatal) for each Exec* line of a unit."""
+    for line in text.splitlines():
+        m = re.match(r"\s*(ExecStartPre|ExecStart|ExecStartPost|ExecCondition)=(.*)", line)
+        if not m or not m.group(2).strip():
+            continue
+        cmd = m.group(2).strip()
+        prefix = re.match(r"[-@:+!]*", cmd).group(0)
+        argv = cmd[len(prefix):].split()
+        if argv:
+            yield m.group(1), argv[0], "-" not in prefix
+
+
+def unit_names(entries: dict[str, dict], unit: str) -> list[str]:
+    return [n for n in entries if n.rsplit("/", 1)[-1] == unit]
+
+
+def read_text(entries: dict[str, dict], path: str) -> str | None:
+    e = entries.get(resolve_in(entries, path))
+    if not e or e["kind"] != "file" or b"\0" in e["data"][:4096] or len(e["data"]) > (4 << 20):
+        return None
+    return e["data"].decode(errors="replace")
+
+
+def firstboot_scan(entries: dict[str, dict]) -> tuple[list[dict], list[dict], list[dict]]:
+    """(units, missing programs, kernel-module requirements) for the first-boot set."""
+    required = set()
+    for name, e in entries.items():
+        if "sysroot.mount" in name and e["kind"] == "file":
+            for m in re.finditer(r"^(?:Requires|Wants|BindsTo)=(.*)$",
+                                 e["data"].decode(errors="replace"), re.M):
+                required.update(u for u in m.group(1).split() if u.endswith(".service"))
+    units, missing, needs = [], [], []
+    seen = set()
+    for name, e in entries.items():
+        base = name.rsplit("/", 1)[-1]
+        if not (FIRSTBOOT_UNIT.search(name) or base in required) or base in seen:
+            continue
+        text = read_text(entries, name)
+        if text is None:
+            continue
+        seen.add(base)
+        m = re.search(r"^TimeoutStartSec=(\S+)", text, re.M)
+        units.append({"unit": base, "path": name, "required_by_sysroot": base in required,
+                      "timeout": m.group(1) if m else "default"})
+        scripts: list[str] = []
+        for directive, prog, fatal in exec_lines(text):
+            if prog.startswith("/"):
+                found = resolve_in(entries, prog) in entries
+            else:
+                found = any(resolve_in(entries, f"{d}/{prog}") in entries
+                            for d in ("bin", "sbin", "usr/bin", "usr/sbin"))
+            if not found and fatal:
+                missing.append({"unit": base, "directive": directive, "program": prog})
+            if found and prog.startswith("/"):
+                scripts.append(prog)
+        # Follow store paths from the unit's scripts (bounded) to find the
+        # programs whose kernel support must be present.
+        queue, visited = list(scripts), set()
+        while queue and len(visited) < 64:
+            path = queue.pop(0)
+            if path in visited:
+                continue
+            visited.add(path)
+            body = read_text(entries, path)
+            if body is None:
+                continue
+            for pattern, modules in SCRIPT_NEEDS:
+                if pattern.search(body):
+                    for mod in modules:
+                        needs.append({"unit": base, "module": mod, "why": f"{pattern.pattern} in {path}"})
+            queue.extend(re.findall(r"/nix/store/[0-9a-z]{32}-[^\s'\"();|&<>]+", body))
+    return units, missing, needs
+
+
+def config_builtins(path: Path | None) -> set[str]:
+    if not path:
+        return set()
+    text = path.read_text(errors="replace")
+    return {mod for mod, sym in MODULE_CONFIG.items() if re.search(rf"^CONFIG_{sym}=y$", text, re.M)}
 
 
 # --------------------------------------------------------------------------- ESP
@@ -394,6 +497,8 @@ def main() -> int:
     ap.add_argument("--kernel-sha256", help="expected GRUB kernel SHA-256 (optional)")
     ap.add_argument("--metadata", type=Path, help="installer-data JSON (stage2 board policy)")
     ap.add_argument("--esp-volume-id", help="FAT volume id the installer formats, e.g. 0x1FE07AA4")
+    ap.add_argument("--kernel-config", type=Path,
+                    help="the GRUB kernel's .config; CONFIG_X=y counts as built in for initrd-firstboot")
     ap.add_argument("--receipt", type=Path, required=True)
     ap.add_argument("--work", type=Path, help="scratch directory (default: temp)")
     args = ap.parse_args()
@@ -502,6 +607,8 @@ def main() -> int:
             closure_ok = []
             fatal_modprobe = []
             initrd_info = []
+            firstboot = []          # per entry: units, missing programs, unmet modules
+            builtin_cfg = config_builtins(args.kernel_config)
             for idx, entry in enumerate(entries):
                 kpath, *params = entry["linux"]
                 ipaths = entry["initrd"] or []
@@ -551,6 +658,17 @@ def main() -> int:
                         note_ref(f"initrd[{idx}]:{name}", "uuid", m.group(1).lower())
                     for m in re.finditer(r"by-label/([^\s'\"]+)", text):
                         note_ref(f"initrd[{idx}]:{name}", "label", m.group(1).replace("\\x20", " "))
+                fb_units, fb_missing, fb_needs = firstboot_scan(ent)
+                for name, text in text_files(ent):
+                    if name.endswith("fstab") or "/etc/fstab" in name:
+                        for line in text.splitlines():
+                            f = line.split()
+                            if len(f) >= 3 and not f[0].startswith("#") and f[1] in ("/", "/sysroot") \
+                                    and f[2] in FS_MODULE:
+                                fb_needs.append({"unit": "sysroot.mount", "module": FS_MODULE[f[2]],
+                                                 "why": f"{name}: {f[1]} is {f[2]}"})
+                firstboot.append({"entry": idx, "release": krel, "units": fb_units, "missing": fb_missing,
+                                  "needs": fb_needs, "initrd_modules": avail})
                 fw = [n for n in ent if n.endswith("aurora-vendor-firmware.service")]
                 root_units = [n for n in ent if n.endswith("aurora-initrd-root.service")]
                 root_timeout = None
@@ -594,6 +712,11 @@ def main() -> int:
                 kmdir, _ = root_reader.locate(f"{km}/lib/modules", [prefix])
                 for rel in sorted(os.listdir(kmdir)):
                     releases[f"grub[{idx}].closure:kernel-modules/{rel}"] = rel
+                    builtin = kmdir / rel / "modules.builtin"
+                    if rel == krel and builtin.is_file():
+                        firstboot[-1]["closure_builtin"] = {
+                            re.sub(r"\.ko(\..*)?$", "", l.strip().rsplit("/", 1)[-1]).replace("-", "_")
+                            for l in builtin.read_text(errors="replace").splitlines() if l.strip()}
                 etc_link, _ = root_reader.locate(f"{system}/etc", [prefix])
                 etc = os.readlink(etc_link) if etc_link.is_symlink() else f"{system}/etc"
                 fstab_link, _ = root_reader.locate(f"{etc}/fstab", [prefix])
@@ -631,6 +754,22 @@ def main() -> int:
             record("kernel-release", len(distinct) == 1 and distinct != ["<none>"], releases)
             record("closure-identity", not closure_ok, closure_ok or "GRUB kernel/initrd are the closure's")
             record("initrd-modprobe", not fatal_modprobe, fatal_modprobe or "every fatal modprobe resolves")
+
+            fb_bad, fb_report = [], []
+            for fb in firstboot:
+                have = fb["initrd_modules"] | fb.get("closure_builtin", set()) | builtin_cfg
+                unmet = [n for n in fb["needs"] if n["module"] not in have]
+                if not fb["units"]:
+                    fb_bad.append({"entry": fb["entry"], "problem": "no first-boot initrd unit found"})
+                fb_bad += [dict(m, entry=fb["entry"], problem="program not in initrd") for m in fb["missing"]]
+                fb_bad += [dict(n, entry=fb["entry"], problem=f"module not built in or in initrd for {fb['release']}")
+                           for n in unmet]
+                fb_report.append({"entry": fb["entry"], "release": fb["release"], "units": fb["units"],
+                                  "needs": sorted({n["module"] for n in fb["needs"]}),
+                                  "builtin_source": ("closure modules.builtin" if "closure_builtin" in fb else
+                                                     "none") + (" + --kernel-config" if builtin_cfg else "")})
+            facts["initrd_firstboot"] = fb_report
+            record("initrd-firstboot", not fb_bad, fb_bad or "first-boot units resolve under this kernel")
 
             bad = []
             for ref in refs:
