@@ -48,6 +48,16 @@
           },
           "qualification": "not_hardware_qualified"
         },
+        "j773g": {
+          "device_tree": "arch/arm64/boot/dts/apple/t8132-j773g.dts",
+          "evidence": "https://github.com/aurora-silicon/linux/blob/81e9556709c094374c6dcd3553329d4bb51ca19b/arch/arm64/boot/dts/apple/t8132-j773g.dts",
+          "manifest_identity": {
+            "device_class": "j773gap",
+            "chip_id": "0x8132",
+            "board_id": "0x2a"
+          },
+          "qualification": "not_hardware_qualified"
+        },
         "j775c": {
           "device_tree": "arch/arm64/boot/dts/apple/t6050-j775c.dts",
           "evidence": "https://github.com/aurora-silicon/linux/blob/677be395b9d2e15d98696107ebf88191f08efbf9/arch/arm64/boot/dts/apple/t6050-j775c.dts",

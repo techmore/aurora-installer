@@ -283,7 +283,7 @@
           },
           "j773g": {
             "expert": false,
-            "minimum": "26.6.2"
+            "minimum": "27.2"
           },
           "j773s": {
             "expert": false,
@@ -474,6 +474,7 @@
               "j714s",
               "j716c",
               "j716s",
+              "j773g",
               "j775c",
               "j775d",
               "j873s"

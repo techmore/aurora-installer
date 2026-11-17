@@ -11,6 +11,9 @@ SUPPORTED = ROOT / 'scripts/supported-models.json'
 
 BUILD = re.compile(r'^[0-9]{2}[A-Z][0-9]{1,5}[a-z]?$')
 DIGEST = re.compile(r'^sha256:[0-9a-f]{64}$')
+# Chips whose boards may be admitted experimentally: T6050 (M5 family) and
+# T8132 (M4, the Mac mini J773g).
+EXPERIMENTAL_CHIPS = {'0x6050', '0x8132'}
 APPLE_CDN = 'https://updates.cdn-apple.com/'
 
 
@@ -76,18 +79,19 @@ class FirmwareQualificationTests(unittest.TestCase):
                 self.assertIn('apple,' + board, caution, build + ' ' + board)
                 self.assertEqual(self.policy['devices'][board], {'expert': False, 'minimum': '27.2'})
                 self.assertEqual(proof['qualification'], 'not_hardware_qualified')
+                chip = proof['manifest_identity']['chip_id']
                 self.assertEqual(proof['device_tree'],
-                                 'arch/arm64/boot/dts/apple/t6050-' + board + '.dts')
+                                 'arch/arm64/boot/dts/apple/t' + chip[2:] + '-' + board + '.dts')
                 self.assertTrue(proof['evidence'].endswith('/' + proof['device_tree']))
                 self.assertTrue(proof['evidence'].startswith(
                     'https://github.com/aurora-silicon/linux/blob/'))
                 self.assertEqual(proof['manifest_identity']['device_class'], board + 'ap')
-                self.assertEqual(proof['manifest_identity']['chip_id'], '0x6050')
+                self.assertIn(chip, EXPERIMENTAL_CHIPS, board)
                 self.assertRegex(proof['manifest_identity']['board_id'], r'^0x[0-9a-f]{2}$')
 
     def test_t6050_experimental_admission_keeps_the_verified_source_pin(self):
         expected = {'j714c': '0x0a', 'j714s': '0x08', 'j716c': '0x0e', 'j716s': '0x0c',
-                    'j775c': '0x10', 'j775d': '0x12', 'j873s': '0x02'}
+                    'j773g': '0x2a', 'j775c': '0x10', 'j775d': '0x12', 'j873s': '0x02'}
         record = self.record['pins']['26B123']
         self.assertEqual(record['boards'], {})
         self.assertEqual({board: proof['manifest_identity']['board_id']
@@ -99,6 +103,14 @@ class FirmwareQualificationTests(unittest.TestCase):
         oled = next(entry for entry in self.policy['firmware']
                     if '26B8125' in entry['sourceURL'])
         self.assertEqual(set(oled['models']), {'k114c', 'k114s', 'k116c', 'k116s'})
+
+    def test_j773g_takes_the_27_2_pin_as_the_t8132_experimental_board(self):
+        # Mac mini M4 (Mac16,10): the pinned 26B123 manifest's Customer
+        # identities name j773gap with chip 0x8132 and board 0x2a.
+        proof = self.record['pins']['26B123']['experimental_boards']['j773g']
+        self.assertEqual(proof['manifest_identity'],
+                         {'device_class': 'j773gap', 'chip_id': '0x8132', 'board_id': '0x2a'})
+        self.assertIn('j773g', self.pinned['26B123']['models'])
 
     def test_the_27_2_pin_is_last_so_it_wins_where_it_qualifies(self):
         # Selection keeps the last compatible entry in source order.
