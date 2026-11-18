@@ -1221,3 +1221,43 @@ private final class SlowHTTPServer: @unchecked Sendable {
     pending?.resume(with: result)
   }
 }
+
+extension VerifiedArtifactStagerTests {
+  func testM4TestBuildPinsRefuseAnotherPayloadBeforeAnyCopyOrDownload() async throws {
+    let data = Data("another payload".utf8)
+    let downloader = FixtureArtifactDownloader(data: data)
+    let root = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let artifact = try descriptor(fileName: "nixos-kde-build-43697993510.zip", data: data)
+    let stager = VerifiedArtifactStager(downloader: downloader, enforcesM4TestBuildPins: true)
+    await assertThrows(try await stager.stage(artifact, in: root.appendingPathComponent("s"))) {
+      XCTAssertEqual(
+        $0 as? InstallerM4TestBuildGuard.Refusal,
+        .otherPayload(fileName: artifact.fileName, digest: artifact.expectedDigest))
+    }
+    let downloads = await downloader.downloadCount
+    XCTAssertEqual(downloads, 0)
+    // The same artifact stages normally when the pins are off.
+    let staged = try await VerifiedArtifactStager(downloader: downloader)
+      .stage(artifact, in: root.appendingPathComponent("t"))
+    XCTAssertEqual(try Data(contentsOf: staged.fileURL), data)
+  }
+
+  func testM4TestBuildPinsRefuseALargeDownloadBeforeItStarts() async throws {
+    let downloader = FixtureArtifactDownloader(data: Data())
+    let root = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let large = try PinnedInstallerArtifact(
+      role: "metadata", sourceURL: URL(string: "https://example.com/large.json")!,
+      fileName: "large.json", expectedDigest: digest(Data("x".utf8)),
+      expectedSizeBytes: 5_910_000_000)
+    let stager = VerifiedArtifactStager(downloader: downloader, enforcesM4TestBuildPins: true)
+    await assertThrows(try await stager.stage(large, in: root.appendingPathComponent("s"))) {
+      XCTAssertEqual(
+        $0 as? InstallerM4TestBuildGuard.Refusal,
+        .largeDownload(fileName: "large.json", sizeBytes: 5_910_000_000))
+    }
+    let downloads = await downloader.downloadCount
+    XCTAssertEqual(downloads, 0)
+  }
+}

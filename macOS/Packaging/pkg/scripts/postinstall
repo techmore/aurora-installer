@@ -67,7 +67,7 @@ else
   exit 1
 fi
 
-APP="/Applications/$INSTALLER_APP_NAME.app"
+APP="/Applications/$INSTALLER_BUNDLE_NAME.app"
 remove_legacy_app "/Applications/$INSTALLER_LEGACY_APP_NAME.app"
 
 # Pre-run Gatekeeper's one-time inspection of the new app now, while the

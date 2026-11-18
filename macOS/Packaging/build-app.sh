@@ -65,7 +65,7 @@ team_identifier="${AURORA_TEAM_ID:-}"
 app_identifier="$INSTALLER_APP_IDENTIFIER"
 helper_identifier="$INSTALLER_HELPER_IDENTIFIER"
 restore_image_identifier="$INSTALLER_RESTORE_IMAGE_IDENTIFIER"
-app_name="$INSTALLER_APP_NAME.app"
+app_name="$INSTALLER_BUNDLE_NAME.app"
 app_executable_name="AuroraAppleInstallerApp"
 packaged_executable_name="AuroraInstaller"
 daemon_plist_name="$helper_identifier.plist"
@@ -384,9 +384,9 @@ plutil -replace CFBundleVersion \
 plutil -replace CFBundleIdentifier \
   -string "$app_identifier" "$contents/Info.plist"
 plutil -replace CFBundleName \
-  -string "$INSTALLER_APP_NAME" "$contents/Info.plist"
+  -string "$INSTALLER_BUNDLE_NAME" "$contents/Info.plist"
 plutil -replace CFBundleDisplayName \
-  -string "$INSTALLER_APP_NAME" "$contents/Info.plist"
+  -string "$INSTALLER_BUNDLE_NAME" "$contents/Info.plist"
 plutil -replace Label \
   -string "$helper_identifier" \
   "$contents/Library/LaunchDaemons/$daemon_plist_name"

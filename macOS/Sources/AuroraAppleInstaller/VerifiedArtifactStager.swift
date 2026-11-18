@@ -269,6 +269,8 @@ public struct VerifiedArtifactStager: Sendable {
   private let bundledArtifactDirectory: URL?
   private let requiresBundledArtifacts: Bool
   private let localPayloadDirectory: URL?
+  /// Only the M4 local-payload test build enforces its pins in production.
+  private let enforcesM4TestBuildPins: Bool
 
   public init() {
     downloader = ProgressReportingArtifactDownloader()
@@ -277,6 +279,7 @@ public struct VerifiedArtifactStager: Sendable {
     requiresBundledArtifacts =
       Bundle.main.object(forInfoDictionaryKey: "AuroraOfflineBundle") as? Bool == true
     localPayloadDirectory = InstallerLocalPayloadPolicy.directory()
+    enforcesM4TestBuildPins = InstallerM4TestBuildGuard.isActive
   }
 
   init(
@@ -284,7 +287,8 @@ public struct VerifiedArtifactStager: Sendable {
     promoter: AtomicArtifactFilePromoter = AtomicArtifactFilePromoter(),
     bundledArtifactDirectory: URL? = nil,
     requiresBundledArtifacts: Bool = false,
-    localPayloadDirectory: URL? = nil
+    localPayloadDirectory: URL? = nil,
+    enforcesM4TestBuildPins: Bool = false
   ) {
     self.downloader = downloader
     self.promoter = promoter
@@ -293,6 +297,7 @@ public struct VerifiedArtifactStager: Sendable {
     self.localPayloadDirectory = localPayloadDirectory.flatMap {
       InstallerLocalPayloadPolicy.directory(requested: $0)
     }
+    self.enforcesM4TestBuildPins = enforcesM4TestBuildPins
   }
 
   public func matches(_ artifact: PinnedInstallerArtifact, at fileURL: URL) -> Bool {
@@ -346,6 +351,9 @@ public struct VerifiedArtifactStager: Sendable {
     progress: ArtifactStagingProgressHandler?,
     log: InstallerDownloadLog?
   ) async throws -> StagedInstallerArtifact {
+    // The M4 local-payload test build stages only its one gated payload.
+    try InstallerM4TestBuildGuard.check(
+      artifact, downloading: false, active: enforcesM4TestBuildPins)
     let fileManager = FileManager.default
     try ensureSafeDirectory(stagingDirectory, fileManager: fileManager)
     let destination = stagingDirectory.appendingPathComponent(
@@ -400,6 +408,9 @@ public struct VerifiedArtifactStager: Sendable {
     guard !requiresBundledArtifacts else {
       throw ArtifactStageError.bundledArtifactMissing(artifact.fileName)
     }
+    // Every byte below comes from the network.
+    try InstallerM4TestBuildGuard.check(
+      artifact, downloading: true, active: enforcesM4TestBuildPins)
 
     guard !artifact.parts.isEmpty else {
       log?.downloading(from: artifact.sourceURL)

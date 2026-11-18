@@ -59,7 +59,8 @@ private final class InstallerApplicationDelegate: NSObject, NSApplicationDelegat
     }
     InstallerLog.progress(
       "\(InstallerProductIdentity.appName) \(InstallerVersion.current().map { "\($0)" } ?? "") "
-        + "started" + (simulated ? " (simulation; nothing is saved to disk)" : ""))
+        + "started" + (simulated ? " (simulation; nothing is saved to disk)" : "")
+        + (InstallerM4TestBuildGuard.isActive ? " [\(InstallerM4TestBuildGuard.bannerText)]" : ""))
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -247,7 +248,7 @@ struct AuroraAppleInstallerApp: App {
   @State private var channel = ReleaseChannelPreference().resolveFromMainBundle()
 
   var body: some Scene {
-    WindowGroup(PlainLanguage.windowTitle) {
+    WindowGroup(M4TestBuildWindowTitle.title) {
       Group {
         if removalNeedsReview {
           VStack {
@@ -261,6 +262,7 @@ struct AuroraAppleInstallerApp: App {
           installerContent
         }
       }
+      .m4TestBuildBanner()
       .id(generation)
       .task {
         guard !isSimulation, !checkedPendingInstallation else { return }

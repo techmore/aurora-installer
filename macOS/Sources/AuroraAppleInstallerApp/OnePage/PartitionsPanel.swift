@@ -580,7 +580,9 @@ struct EraseInstallationSheet: View {
   let onCancel: () -> Void
   let onErase: () -> Void
 
-  var body: some View {
+  var body: some View { m4TestBody.m4TestBuildBanner() }
+
+  @ViewBuilder private var m4TestBody: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack(alignment: .top, spacing: 12) {
         InstallationIcon(icon: row.icon, size: 44)
@@ -644,7 +646,9 @@ struct ResetInstallationSheet: View {
   let onCancel: () -> Void
   let onReset: () -> Void
 
-  var body: some View {
+  var body: some View { m4TestBody.m4TestBuildBanner() }
+
+  @ViewBuilder private var m4TestBody: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack(alignment: .top, spacing: 12) {
         InstallationIcon(icon: row.icon, size: 44)

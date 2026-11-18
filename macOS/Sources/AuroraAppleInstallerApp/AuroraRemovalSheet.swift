@@ -87,7 +87,9 @@ struct AuroraRemovalSheet: View {
       && (isSimulation || (!username.isEmpty && !password.isEmpty))
   }
 
-  var body: some View {
+  var body: some View { m4TestBody.m4TestBuildBanner() }
+
+  @ViewBuilder private var m4TestBody: some View {
     VStack(spacing: 0) {
       ScrollView {
         reviewContent

@@ -111,14 +111,14 @@ print(matches[0])
 PY
 )
 installed_requirement=$(/usr/bin/plutil -extract EnvironmentVariables.OMARCHY_CLIENT_CODE_SIGNING_REQUIREMENT raw -o - "$plist")
-[[ $(/usr/bin/plutil -extract Program raw -o - "$plist") == "/Applications/$INSTALLER_APP_NAME.app/Contents/Library/LaunchServices/$INSTALLER_HELPER_IDENTIFIER" ]] \
+[[ $(/usr/bin/plutil -extract Program raw -o - "$plist") == "/Applications/$INSTALLER_BUNDLE_NAME.app/Contents/Library/LaunchServices/$INSTALLER_HELPER_IDENTIFIER" ]] \
   || fail 'developer daemon path differs from its installed app'
 [[ $installed_requirement == "$app_requirement" ]] || fail 'package does not pin the final app cdhash'
 /usr/bin/codesign --verify --strict -R="$installed_requirement" "$app"
 if /usr/bin/codesign --verify --strict -R="$installed_requirement" "$work/OtherClient" >/dev/null 2>&1; then
   fail 'package daemon accepts unrelated same-identifier client'
 fi
-packaged_app=$(python3 - "$work/expanded" "$INSTALLER_APP_NAME.app" <<'PY'
+packaged_app=$(python3 - "$work/expanded" "$INSTALLER_BUNDLE_NAME.app" <<'PY'
 from pathlib import Path
 import sys
 

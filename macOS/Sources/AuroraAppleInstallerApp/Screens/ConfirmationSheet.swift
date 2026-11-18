@@ -11,7 +11,9 @@ struct ConfirmationSheet: View {
   let onConfirm: () -> Void
   let onCancel: () -> Void
 
-  var body: some View {
+  var body: some View { m4TestBody.m4TestBuildBanner() }
+
+  @ViewBuilder private var m4TestBody: some View {
     VStack(alignment: .leading, spacing: 0) {
       Text(title)
         .font(InstallerTheme.sheetTitle)

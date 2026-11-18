@@ -74,3 +74,18 @@ review before use.
 NixOS KDE catalog. It needs a new raw 32-byte Ed25519 private key, which must be
 destroyed after signing, and it refuses to overwrite an existing output
 directory. A new key means a new trust root; the catalog is not reproducible.
+
+## Local-payload test build (`staging/27.2/aurora-installer-r3-test`)
+
+This branch can never be mistaken for, or talk to, an official Aurora Installer:
+
+- It installs as `/Applications/Aurora Installer M4 Test.app` (`INSTALLER_BUNDLE_NAME`), bundle
+  `org.aurorasilicon.installer.m4test`, helper label `org.aurorasilicon.installer.m4test.helper`, decoder
+  `org.aurorasilicon.installer.m4test.restore-image`, package `org.aurorasilicon.installer.m4test.pkg.developer`.
+  `INSTALLER_APP_NAME` stays `Aurora Installer`: it names the Recovery template and the startup stub's marker.
+- `M4MiniPatches/Release/release.json` and `Profiles/nixos-kde/release.json` name that helper; the sealed
+  catalog (`b41edee7…`) is unchanged.
+- Built with `AURORA_LOCAL_PAYLOAD_TEST_BUILD=1` (debug), every window and sheet carries a red banner
+  "M4 TEST BUILD — local payload 9c066b16… — 27.2 stub" and the window title says so. The same build compiles
+  `InstallerM4TestBuildGuard` active: staging refuses any payload other than
+  `nixos-kde-build-43451965403.zip` (`sha256:9c066b16…`) and any network download of 5 GB or more.

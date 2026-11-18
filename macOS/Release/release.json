@@ -13,6 +13,6 @@
     }
   },
   "trust_root_fingerprint": "sha256:5e510a663c3765a9a6ffe78085f330f9ba83a11cbd4621385791ec4e98aee5ed",
-  "helper_mach_service_name": "org.aurorasilicon.installer.helper",
-  "helper_code_signing_requirement": "identifier \"org.aurorasilicon.installer.helper\""
+  "helper_mach_service_name": "org.aurorasilicon.installer.m4test.helper",
+  "helper_code_signing_requirement": "identifier \"org.aurorasilicon.installer.m4test.helper\""
 }

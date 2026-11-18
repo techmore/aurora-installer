@@ -27,7 +27,9 @@ struct CredentialSheet: View {
     case password
   }
 
-  var body: some View {
+  var body: some View { m4TestBody.m4TestBuildBanner() }
+
+  @ViewBuilder private var m4TestBody: some View {
     VStack(alignment: .leading, spacing: 16) {
       Text(isRetry ? PlainLanguage.authorizeRetryTitle : PlainLanguage.authorizeTitle)
         .font(InstallerTheme.sheetTitle)
