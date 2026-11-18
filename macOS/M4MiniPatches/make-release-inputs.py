@@ -11,7 +11,7 @@ import shutil
 import urllib.request
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 TAG = "v0.1.0-alpha.21.m4minipatches"
 RELEASE_BASE = f"https://github.com/techmore/aurora-installer/releases/download/{TAG}"
@@ -54,6 +54,24 @@ def require_gate(receipt_path: Path, payload_sha256: str, stage2_sha256: str) ->
     return receipt
 
 
+def read_official_catalog(directory: Path, trust_root_fingerprint: str) -> dict:
+    """Read a saved official catalog.json + catalog.json.sig, verified against the pinned root.
+
+    The live catalog moves on to newer payload builds; a payload-release snapshot
+    (catalog.json, catalog.json.sig, trust-root.ed25519.pub) keeps the audited record.
+    """
+    catalog = (directory / "catalog.json").read_bytes()
+    signature = (directory / "catalog.json.sig").read_bytes()
+    public = (directory / "trust-root.ed25519.pub").read_bytes()
+    if len(public) != 32 or f"sha256:{digest(public)}" != trust_root_fingerprint:
+        raise SystemExit("official catalog trust root is not INSTALLER_TRUST_ROOT_FINGERPRINT")
+    try:
+        Ed25519PublicKey.from_public_bytes(public).verify(signature, catalog)
+    except Exception:
+        raise SystemExit("official catalog signature does not verify against the pinned trust root")
+    return json.loads(catalog)
+
+
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -72,7 +90,8 @@ def read_identity(path: Path) -> dict[str, str]:
         match = re.fullmatch(r'([A-Z][A-Z0-9_]*)="([^"\\$`]*)"', line)
         if match:
             values[match.group(1)] = match.group(2)
-    for name in ("INSTALLER_HELPER_IDENTIFIER", "INSTALLER_PUBLIC_BASE", "INSTALLER_STREAM_PATH"):
+    for name in ("INSTALLER_HELPER_IDENTIFIER", "INSTALLER_PUBLIC_BASE", "INSTALLER_STREAM_PATH",
+                 "INSTALLER_TRUST_ROOT_FINGERPRINT"):
         if not values.get(name):
             raise SystemExit(f"identity file is missing {name}")
     return values
@@ -118,6 +137,13 @@ def main() -> None:
         default=Path(__file__).resolve().parent.parent / "Packaging" / "identity.conf",
     )
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--official-catalog",
+        type=Path,
+        help="directory with a saved official catalog.json, catalog.json.sig and "
+             "trust-root.ed25519.pub (verified against INSTALLER_TRUST_ROOT_FINGERPRINT) "
+             "instead of the live catalog",
+    )
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit(f"refusing to overwrite {args.output}")
@@ -159,9 +185,13 @@ def main() -> None:
     if reconstructed.hexdigest() != payload_sha256:
         raise SystemExit("payload parts do not reconstruct the payload bytes")
 
-    with urllib.request.urlopen(official_envelope) as response:
-        envelope = json.load(response)
-    official = json.loads(base64.b64decode(envelope["catalog"]))
+    if args.official_catalog:
+        official = read_official_catalog(args.official_catalog, identity["INSTALLER_TRUST_ROOT_FINGERPRINT"])
+        official_envelope = str(args.official_catalog / "catalog.json")
+    else:
+        with urllib.request.urlopen(official_envelope) as response:
+            envelope = json.load(response)
+        official = json.loads(base64.b64decode(envelope["catalog"]))
     records = [record for record in official["models"] if record["deviceIdentifier"] == "apple,j773g"]
     if len(records) != 1:
         raise SystemExit("official catalog does not contain exactly one apple,j773g record")
